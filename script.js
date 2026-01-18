@@ -390,16 +390,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Matrix Logic
     let drops = [];
+    let lastFrameTime = 0;
+    const frameDelay = 50; // Spomalenie: vykresli snimku kazdych 50ms (cca 20 FPS)
     const fontSize = 16;
     const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%^&*\u0020";
 
     function startMatrixEffect() {
         resizeMatrix();
-        // Initial draw loop
-        function draw() {
-            if (!focusActive) return; 
+        lastFrameTime = 0;
+        
+        function draw(currentTime) {
+            if (!focusActive) return;
             
-            // Translucent black background to create trail effect
+            requestAnimationFrame(draw);
+
+            // Ak neubehlo dostatok casu od poslednej snimky, nic nerob
+            if (currentTime - lastFrameTime < frameDelay) return;
+            lastFrameTime = currentTime;
+
             ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
             ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
 
@@ -416,9 +424,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 drops[i]++;
             }
-            requestAnimationFrame(draw);
         }
-        draw();
+        requestAnimationFrame(draw);
     }
 
     function stopMatrixEffect() {
