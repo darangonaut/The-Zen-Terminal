@@ -8,4 +8,6 @@ body {
 #terminal-container {
     width: 100vw;
     height: 100vh;
+    padding: 0 20px; /* Odsadenie len zlava a zprava */
+    box-sizing: border-box;
 }
