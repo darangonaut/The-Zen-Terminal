@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const terminalContainer = document.getElementById('terminal-container');
     const matrixCanvas = document.getElementById('matrix-canvas');
     const focusOverlay = document.getElementById('focus-overlay');
+    const focusTaskEl = document.getElementById('focus-task');
     const focusTimerEl = document.getElementById('focus-timer');
     const focusHintEl = document.getElementById('focus-hint');
     const ctx = matrixCanvas.getContext('2d');
@@ -221,9 +222,31 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         else if (action === 'focus') {
-            const minutes = parseInt(args);
+            // Split args: first part is minutes, optional second part is ID
+            const focusArgs = args.split(' ').filter(a => a.length > 0);
+            const minutes = parseInt(focusArgs[0]);
+            
             if (!isNaN(minutes) && minutes > 0) {
-                startFocus(minutes);
+                let taskName = "HLBOKÁ PRÁCA"; // Default fallback
+                
+                if (focusArgs.length > 1) {
+                    // ID was provided: focus 25 3
+                    const id = parseInt(focusArgs[1]);
+                    const task = tasks.find(t => t.id === id);
+                    if (task) {
+                        taskName = task.text;
+                    } else {
+                        term.writeln(`[VAROVANIE]: Uloha s ID ${id} nenajdena. Pouzivam predvoleny text.`);
+                    }
+                } else {
+                    // No ID provided: focus 25 -> Find first unfinished task
+                    const firstUnfinished = tasks.find(t => !t.done);
+                    if (firstUnfinished) {
+                        taskName = firstUnfinished.text;
+                    }
+                }
+                
+                startFocus(minutes, taskName);
             } else {
                 term.writeln('[CHYBA]: Zadajte pocet minut. (napr. focus 25)');
             }
@@ -254,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
             term.writeln('done [id]       - splnit ulohu');
             term.writeln('del [id/all]    - vymazat ulohu alebo vsetko');
             term.writeln('undo            - vratit poslednu zmenu');
-            term.writeln('focus [min]     - spustit casovac sustredenia');
+            term.writeln('focus [min] [id]- spustit casovac sustredenia (volitelne ID ulohy)');
             term.writeln('stats           - zobrazit statistiky');
             term.writeln('theme [nazov]   - zmenit farbu (alebo len "theme" pre menu)');
             term.writeln('clear           - vycistit obrazovku');
@@ -307,7 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // FOCUS MODE & MATRIX EFFECT
     // ==========================================
 
-    function startFocus(minutes) {
+    function startFocus(minutes, taskText) {
         focusActive = true;
         focusTimeLeft = minutes * 60;
 
@@ -320,6 +343,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const color = themes[currentTheme].foreground;
         focusOverlay.style.color = color;
         focusTimerEl.style.textShadow = `0 0 20px ${color}`;
+        focusTaskEl.style.textShadow = `0 0 10px ${color}`;
+
+        // Set Task Text
+        focusTaskEl.innerText = taskText;
 
         // Start Timer
         updateTimerDisplay();
@@ -364,13 +391,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Matrix Logic
     let drops = [];
     const fontSize = 16;
-    const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%^&* ";
+    const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%^&*\u0020";
 
     function startMatrixEffect() {
         resizeMatrix();
         // Initial draw loop
         function draw() {
-            if (!focusActive) return;
+            if (!focusActive) return; 
             
             // Translucent black background to create trail effect
             ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';

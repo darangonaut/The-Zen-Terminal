@@ -12,38 +12,53 @@ body {
     box-sizing: border-box;
 }
 
-/* Matrix Canvas - pozadie focus modu */
+/* Matrix Canvas */
 #matrix-canvas {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    z-index: 1000; /* Nad terminalom */
+    z-index: 1000;
     background: #000;
 }
 
-/* Timer Overlay - popredie focus modu */
+/* Timer Overlay */
 #focus-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    z-index: 1001; /* Nad matrixom */
+    z-index: 1001;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    pointer-events: none; /* Aby neblokoval klikania ak by nejake boli */
+    pointer-events: none;
+    text-align: center;
+}
+
+#focus-task {
+    font-family: 'Courier New', monospace;
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    max-width: 80%;
+    word-wrap: break-word;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: inherit;
+    text-shadow: 0 0 10px currentColor;
 }
 
 #focus-timer {
     font-family: 'Courier New', monospace;
     font-size: 8rem;
     font-weight: bold;
-    color: inherit; /* Preberie farbu z JS podla temy */
-    text-shadow: 0 0 20px currentColor; /* Zarienie */
+    color: inherit;
+    text-shadow: 0 0 20px currentColor;
+    line-height: 1;
 }
 
 #focus-hint {
