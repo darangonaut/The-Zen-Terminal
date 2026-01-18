@@ -4,20 +4,18 @@
 <head>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.css" />
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.1.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.js"></script>
     <style>
         body {
             background: #000;
             margin: 0;
-            display: flex;
-            height: 100vh;
-            justify-content: center;
-            align-items: center;
+            padding: 0;
+            overflow: hidden;
         }
 
         #terminal-container {
-            width: 80%;
-            height: 60%;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+            width: 100vw;
+            height: 100vh;
         }
     </style>
 </head>
@@ -33,7 +31,14 @@
             fontSize: 18
         });
 
+        const fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+
         term.open(document.getElementById('terminal-container'));
+        fitAddon.fit();
+
+        window.addEventListener('resize', () => fitAddon.fit());
+
         term.writeln('=== ZEN TERMINAL v1.0 ===');
         term.writeln('Zadaj "help" pre zoznam prikazov.');
         term.write('\r\n> ');
