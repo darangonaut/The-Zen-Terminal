@@ -2,7 +2,7 @@ const term = new Terminal({
     cursorBlink: true,
     theme: { background: '#000', foreground: '#00ff00' },
     fontFamily: 'Courier New, monospace',
-    fontSize: 18
+    fontSize: 14
 });
 
 const fitAddon = new FitAddon.FitAddon();
@@ -13,7 +13,15 @@ fitAddon.fit();
 
 window.addEventListener('resize', () => fitAddon.fit());
 
-term.writeln('=== ZEN TERMINAL v1.0 ===');
+term.writeln('  ______              _______                  _             _ ');
+term.writeln(' |___  /             |__   __|                (_)           | |');
+term.writeln('    / /  ___ _ __       | | ___ _ __ _ __ ___  _ _ __   __ _| |');
+term.writeln('   / /  / _ \ \'_ \\      | |/ _ \\ \'__| \'_ ` _ \\| | \'_ \\ / _` | |');
+term.writeln('  / /__|  __/ | | |     | |  __/ |  | | | | | | | | | | (_| | |');
+term.writeln(' /_____|\\___|_| |_|     |_|\\___|_|  |_| |_| |_|_|_| |_|\\__,_|_|');
+term.writeln('');
+term.writeln(' v1.0');
+term.writeln('');
 term.writeln('Zadaj "help" pre zoznam prikazov.');
 term.write('\r\n> ');
 
