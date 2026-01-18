@@ -1,4 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // DOM Elements
+    const terminalContainer = document.getElementById('terminal-container');
+    const matrixCanvas = document.getElementById('matrix-canvas');
+    const focusOverlay = document.getElementById('focus-overlay');
+    const focusTimerEl = document.getElementById('focus-timer');
+    const focusHintEl = document.getElementById('focus-hint');
+    const ctx = matrixCanvas.getContext('2d');
+
     const term = new Terminal({
         cursorBlink: true,
         theme: { background: '#000', foreground: '#00ff00' },
@@ -9,15 +17,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const fitAddon = new FitAddon.FitAddon();
     term.loadAddon(fitAddon);
 
-    term.open(document.getElementById('terminal-container'));
+    term.open(terminalContainer);
     fitAddon.fit();
 
-    window.addEventListener('resize', () => fitAddon.fit());
+    window.addEventListener('resize', () => {
+        fitAddon.fit();
+        if (focusActive) resizeMatrix();
+    });
 
+    // ASCII Logo
     term.writeln('  ______              _______                  _             _ ');
     term.writeln(' |___  /             |__   __|                (_)           | |');
     term.writeln('    / /  ___ _ __       | | ___ _ __ _ __ ___  _ _ __   __ _| |');
-    term.writeln('   / /  / _ \ _ \      | |/ _ \ __| _ ` _ \| | _ \ \ / _` | |');
+    term.writeln('   / /  / _ \ \'_ \      | |/ _ \ \'__| \'_ ` _ \| | \'_ \ / _` | |');
     term.writeln('  / /__|  __/ | | |     | |  __/ |  | | | | | | | | | | (_| | |');
     term.writeln(' /_____|\___|_| |_|     |_|\___|_|  |_| |_| |_|_|_| |_|\__,_|_|');
     term.writeln('');
@@ -50,42 +62,39 @@ document.addEventListener('DOMContentLoaded', () => {
     let focusActive = false;
     let focusInterval = null;
     let focusTimeLeft = 0;
+    let matrixInterval = null;
 
     let themeSelectionActive = false;
     const themeList = ['green', 'amber', 'cyan'];
     let themeSelectionIndex = 0;
 
-    // INPUT HANDLING
-    term.onData(e => {
-        // 1. FOCUS MODE
+    // GLOBAL KEY LISTENER (For Focus Mode)
+    window.addEventListener('keydown', (e) => {
         if (focusActive) {
-            if (e === 'q' || e === 'Q') {
+            if (e.key === 'q' || e.key === 'Q' || e.key === 'Escape') {
                 stopFocus();
             }
-            return;
         }
+    });
 
-        // 2. THEME SELECTION MODE
+    // TERMINAL INPUT HANDLING
+    term.onData(e => {
+        if (focusActive) return; // Ignore terminal input during focus
+
+        // THEME SELECTION MODE
         if (themeSelectionActive) {
-            // Arrow Up or Arrow Left (Cycle Backwards)
-            if (e === '\u001b[A' || e === '\u001b[D') {
+            if (e === '\u001b[A' || e === '\u001b[D') { // Up/Left
                 themeSelectionIndex = (themeSelectionIndex > 0) ? themeSelectionIndex - 1 : themeList.length - 1;
                 renderThemeSelection();
-            } 
-            // Arrow Down or Arrow Right (Cycle Forwards)
-            else if (e === '\u001b[B' || e === '\u001b[C') {
+            } else if (e === '\u001b[B' || e === '\u001b[C') { // Down/Right
                 themeSelectionIndex = (themeSelectionIndex < themeList.length - 1) ? themeSelectionIndex + 1 : 0;
                 renderThemeSelection();
-            } 
-            // Enter
-            else if (e === '\r') {
+            } else if (e === '\r') { // Enter
                 applyTheme(themeList[themeSelectionIndex]);
                 themeSelectionActive = false;
                 term.writeln(`\r\n[SYSTEM]: Tema zmenena na "${themeList[themeSelectionIndex]}".`);
                 term.write('\r\n> ');
-            }
-            // q or Esc
-            else if (e === 'q' || e === 'Q' || e === '\u001b') {
+            } else if (e === 'q' || e === 'Q' || e === '\u001b') { // q/Esc
                 themeSelectionActive = false;
                 term.writeln('\r\n[SYSTEM]: Zmena temy zrusena.');
                 term.write('\r\n> ');
@@ -93,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 3. STANDARD MODE
+        // STANDARD MODE
         switch (e) {
             case '\r': // Enter
                 if (input.trim().length > 0) {
@@ -102,7 +111,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 handleCommand(input);
                 input = '';
-                // Prompt sa vypise len ak sme nespustili iny rezim
                 if (!focusActive && !themeSelectionActive) term.write('\r\n> ');
                 break;
             case '\u007F': // Backspace
@@ -152,7 +160,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (action === 'do') {
             const newTasks = args.split(';').map(t => t.trim()).filter(t => t.length > 0);
-            
             if (newTasks.length > 0) {
                 saveState();
                 newTasks.forEach(taskText => {
@@ -278,53 +285,11 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('tasks', JSON.stringify(tasks));
     }
 
-    // FOCUS MODE LOGIC
-    function startFocus(minutes) {
-        focusActive = true;
-        focusTimeLeft = minutes * 60;
-        
-        term.clear();
-        term.writeln('=== FOCUS MODE ===');
-        term.writeln('Stlac "q" pre ukoncenie.');
-        term.write('\r\n');
-        
-        updateTimerDisplay();
-        
-        focusInterval = setInterval(() => {
-            focusTimeLeft--;
-            updateTimerDisplay();
-            
-            if (focusTimeLeft <= 0) {
-                stopFocus(true);
-            }
-        }, 1000);
-    }
-
-    function updateTimerDisplay() {
-        const min = Math.floor(focusTimeLeft / 60).toString().padStart(2, '0');
-        const sec = (focusTimeLeft % 60).toString().padStart(2, '0');
-        term.write(`\r\x1b[K > CAS: ${min}:${sec}`);
-    }
-
-    function stopFocus(finished = false) {
-        focusActive = false;
-        clearInterval(focusInterval);
-        term.write('\r\n\r\n');
-        if (finished) {
-            term.writeln('[SYSTEM]: Cas vyprsal. Dobra praca.');
-        } else {
-            term.writeln('[SYSTEM]: Focus mode preruseny.');
-        }
-        term.write('\r\n> ');
-    }
-
     // THEME SELECTION LOGIC
     function startThemeSelection() {
         themeSelectionActive = true;
-        // Set index to current theme
         themeSelectionIndex = themeList.indexOf(currentTheme);
         if (themeSelectionIndex === -1) themeSelectionIndex = 0;
-
         term.writeln('=== VYBER TEMY ===');
         term.writeln('Pouzite sipky (HORE/DOLE/VLAVO/VPRAVO) pre vyber, ENTER pre potvrdenie.');
         renderThemeSelection();
@@ -335,7 +300,112 @@ document.addEventListener('DOMContentLoaded', () => {
             if (i === themeSelectionIndex) return `[ ${t.toUpperCase()} ]`;
             return `  ${t}  `;
         }).join('   ');
-        
         term.write(`\r\x1b[K${line}`);
+    }
+
+    // ==========================================
+    // FOCUS MODE & MATRIX EFFECT
+    // ==========================================
+
+    function startFocus(minutes) {
+        focusActive = true;
+        focusTimeLeft = minutes * 60;
+
+        // Hide terminal, show canvas/overlay
+        terminalContainer.style.display = 'none';
+        matrixCanvas.style.display = 'block';
+        focusOverlay.style.display = 'flex';
+
+        // Apply theme color to overlay
+        const color = themes[currentTheme].foreground;
+        focusOverlay.style.color = color;
+        focusTimerEl.style.textShadow = `0 0 20px ${color}`;
+
+        // Start Timer
+        updateTimerDisplay();
+        focusInterval = setInterval(() => {
+            focusTimeLeft--;
+            updateTimerDisplay();
+            if (focusTimeLeft <= 0) stopFocus(true);
+        }, 1000);
+
+        // Start Matrix
+        startMatrixEffect();
+    }
+
+    function updateTimerDisplay() {
+        const min = Math.floor(focusTimeLeft / 60).toString().padStart(2, '0');
+        const sec = (focusTimeLeft % 60).toString().padStart(2, '0');
+        focusTimerEl.innerText = `${min}:${sec}`;
+    }
+
+    function stopFocus(finished = false) {
+        focusActive = false;
+        clearInterval(focusInterval);
+        stopMatrixEffect();
+
+        // Hide canvas/overlay, show terminal
+        matrixCanvas.style.display = 'none';
+        focusOverlay.style.display = 'none';
+        terminalContainer.style.display = 'block';
+
+        // Restore terminal focus
+        term.focus();
+
+        term.write('\r\n');
+        if (finished) {
+            term.writeln('[SYSTEM]: Cas vyprsal. Dobra praca.');
+        } else {
+            term.writeln('[SYSTEM]: Focus mode preruseny.');
+        }
+        term.write('\r\n> ');
+    }
+
+    // Matrix Logic
+    let drops = [];
+    const fontSize = 16;
+    const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%^&* ";
+
+    function startMatrixEffect() {
+        resizeMatrix();
+        // Initial draw loop
+        function draw() {
+            if (!focusActive) return;
+            
+            // Translucent black background to create trail effect
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+
+            // Set text color based on theme
+            ctx.fillStyle = themes[currentTheme].foreground;
+            ctx.font = fontSize + 'px monospace';
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = chars.charAt(Math.floor(Math.random() * chars.length));
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                if (drops[i] * fontSize > matrixCanvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+            requestAnimationFrame(draw);
+        }
+        draw();
+    }
+
+    function stopMatrixEffect() {
+        // Nothing specific needed as loop checks focusActive
+    }
+
+    function resizeMatrix() {
+        matrixCanvas.width = window.innerWidth;
+        matrixCanvas.height = window.innerHeight;
+        
+        const columns = matrixCanvas.width / fontSize;
+        drops = [];
+        for (let x = 0; x < columns; x++) {
+            drops[x] = 1;
+        }
     }
 });

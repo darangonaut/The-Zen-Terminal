@@ -8,6 +8,48 @@ body {
 #terminal-container {
     width: 100vw;
     height: 100vh;
-    padding: 0 20px; /* Odsadenie len zlava a zprava */
+    padding: 0 20px;
     box-sizing: border-box;
+}
+
+/* Matrix Canvas - pozadie focus modu */
+#matrix-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1000; /* Nad terminalom */
+    background: #000;
+}
+
+/* Timer Overlay - popredie focus modu */
+#focus-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1001; /* Nad matrixom */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none; /* Aby neblokoval klikania ak by nejake boli */
+}
+
+#focus-timer {
+    font-family: 'Courier New', monospace;
+    font-size: 8rem;
+    font-weight: bold;
+    color: inherit; /* Preberie farbu z JS podla temy */
+    text-shadow: 0 0 20px currentColor; /* Zarienie */
+}
+
+#focus-hint {
+    font-family: 'Courier New', monospace;
+    font-size: 1.2rem;
+    margin-top: 2rem;
+    opacity: 0.7;
+    color: inherit;
 }
