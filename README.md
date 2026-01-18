@@ -55,6 +55,10 @@ Na ovládanie aplikácie sú dostupné nasledujúce príkazy:
     *   Dostupné farby: `green`, `amber`, `cyan`.
     *   *Príklad:* `theme amber`
 
+*   **`sound [on/off]`**
+    *   Zapne alebo vypne zvukové efekty (písanie na klávesnici, splnenie úlohy).
+    *   *Príklad:* `sound on`
+
 *   **`stats`**
     *   Zobrazí celkový počet splnených úloh (dlhodobá štatistika).
 

@@ -5,7 +5,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const focusOverlay = document.getElementById('focus-overlay');
     const focusTaskEl = document.getElementById('focus-task');
     const focusTimerEl = document.getElementById('focus-timer');
-    const focusHintEl = document.getElementById('focus-hint');
     const ctx = matrixCanvas.getContext('2d');
 
     const term = new Terminal({
@@ -30,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     term.writeln('  ______              _______                  _             _ ');
     term.writeln(' |___  /             |__   __|                (_)           | |');
     term.writeln('    / /  ___ _ __       | | ___ _ __ _ __ ___  _ _ __   __ _| |');
-    term.writeln('   / /  / _ \ \'_ \      | |/ _ \ \'__| \'_ ` _ \| | \'_ \ / _` | |');
+    term.writeln('   / /  / _ \ _ \      | |/ _ \ __| _ ` _ \| | _ \ / _` | |');
     term.writeln('  / /__|  __/ | | |     | |  __/ |  | | | | | | | | | | (_| | |');
     term.writeln(' /_____|\___|_| |_|     |_|\___|_|  |_| |_| |_|_|_| |_|\__,_|_|');
     term.writeln('');
@@ -47,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let historyIndex = 0;
     let totalCompleted = parseInt(localStorage.getItem('zen_total_completed')) || 0;
     let currentTheme = localStorage.getItem('zen_theme') || 'green';
+    let soundEnabled = localStorage.getItem('zen_sound') === 'true'; // Default false
 
     const themes = {
         green: { foreground: '#00ff00', background: '#000000', cursor: '#00ff00' },
@@ -54,22 +54,82 @@ document.addEventListener('DOMContentLoaded', () => {
         cyan:  { foreground: '#00ffff', background: '#000000', cursor: '#00ffff' }
     };
 
-    // INITIAL THEME APPLICATION
     if (themes[currentTheme]) {
         term.options.theme = themes[currentTheme];
+    }
+
+    // AUDIO CONTEXT
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioContext();
+
+    function playKeySound() {
+        if (!soundEnabled) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        // Mechanical Click Simulation
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'triangle';
+        // Random pitch variation for realism
+        osc.frequency.value = 600 + Math.random() * 200; 
+        
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.05);
+    }
+
+    function playSuccessSound() {
+        if (!soundEnabled) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const now = audioCtx.currentTime;
+        
+        // Osc 1: Base tone
+        const osc1 = audioCtx.createOscillator();
+        const gain1 = audioCtx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(523.25, now); // C5
+        osc1.frequency.exponentialRampToValueAtTime(1046.50, now + 0.1); // Slide to C6
+        
+        gain1.gain.setValueAtTime(0.1, now);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+        osc1.connect(gain1);
+        gain1.connect(audioCtx.destination);
+        osc1.start();
+        osc1.stop(now + 0.5);
+
+        // Osc 2: Harmony
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(659.25, now); // E5
+        
+        gain2.gain.setValueAtTime(0.05, now);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+        osc2.connect(gain2);
+        gain2.connect(audioCtx.destination);
+        osc2.start();
+        osc2.stop(now + 0.5);
     }
 
     // MODES
     let focusActive = false;
     let focusInterval = null;
     let focusTimeLeft = 0;
-    let matrixInterval = null;
-
+    
     let themeSelectionActive = false;
     const themeList = ['green', 'amber', 'cyan'];
     let themeSelectionIndex = 0;
 
-    // GLOBAL KEY LISTENER (For Focus Mode)
+    // GLOBAL KEY LISTENER
     window.addEventListener('keydown', (e) => {
         if (focusActive) {
             if (e.key === 'q' || e.key === 'Q' || e.key === 'Escape') {
@@ -80,7 +140,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // TERMINAL INPUT HANDLING
     term.onData(e => {
-        if (focusActive) return; // Ignore terminal input during focus
+        if (focusActive) return;
+
+        // Play sound on typing (filter out control sequences mostly)
+        if (e.length === 1 && e.charCodeAt(0) >= 32) {
+            playKeySound();
+        }
 
         // THEME SELECTION MODE
         if (themeSelectionActive) {
@@ -106,6 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // STANDARD MODE
         switch (e) {
             case '\r': // Enter
+                playKeySound(); // Enter sound
                 if (input.trim().length > 0) {
                     commandHistory.push(input);
                     historyIndex = commandHistory.length;
@@ -115,6 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!focusActive && !themeSelectionActive) term.write('\r\n> ');
                 break;
             case '\u007F': // Backspace
+                playKeySound();
                 if (input.length > 0) {
                     input = input.slice(0, -1);
                     term.write('\b \b');
@@ -186,6 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 totalCompleted++;
                 localStorage.setItem('zen_total_completed', totalCompleted);
                 save();
+                playSuccessSound();
                 term.writeln('[SYSTEM]: Dopamin uvolneny. Uloha splnena.');
             } else {
                 term.writeln(`[CHYBA]: Uloha s ID ${args} neexistuje.`);
@@ -222,30 +290,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         else if (action === 'focus') {
-            // Split args: first part is minutes, optional second part is ID
             const focusArgs = args.split(' ').filter(a => a.length > 0);
             const minutes = parseInt(focusArgs[0]);
             
             if (!isNaN(minutes) && minutes > 0) {
-                let taskName = "HLBOKÁ PRÁCA"; // Default fallback
-                
+                let taskName = "HLBOKÁ PRÁCA"; 
                 if (focusArgs.length > 1) {
-                    // ID was provided: focus 25 3
                     const id = parseInt(focusArgs[1]);
                     const task = tasks.find(t => t.id === id);
-                    if (task) {
-                        taskName = task.text;
-                    } else {
-                        term.writeln(`[VAROVANIE]: Uloha s ID ${id} nenajdena. Pouzivam predvoleny text.`);
-                    }
+                    if (task) taskName = task.text;
                 } else {
-                    // No ID provided: focus 25 -> Find first unfinished task
                     const firstUnfinished = tasks.find(t => !t.done);
-                    if (firstUnfinished) {
-                        taskName = firstUnfinished.text;
-                    }
+                    if (firstUnfinished) taskName = firstUnfinished.text;
                 }
-                
                 startFocus(minutes, taskName);
             } else {
                 term.writeln('[CHYBA]: Zadajte pocet minut. (napr. focus 25)');
@@ -268,19 +325,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 startThemeSelection();
             }
         }
+        else if (action === 'sound') {
+            if (args === 'on') {
+                soundEnabled = true;
+                localStorage.setItem('zen_sound', 'true');
+                term.writeln('[SYSTEM]: Audio modul aktivovany.');
+                playSuccessSound(); // Demo
+            } else if (args === 'off') {
+                soundEnabled = false;
+                localStorage.setItem('zen_sound', 'false');
+                term.writeln('[SYSTEM]: Audio modul deaktivovany (tichy rezim).');
+            } else {
+                term.writeln(`[SYSTEM]: Zvuk je aktualne ${soundEnabled ? 'ZAPNUTY' : 'VYPNUTY'}.`);
+                term.writeln('Pouzite "sound on" alebo "sound off".');
+            }
+        }
         else if (action === 'clear') {
             term.clear();
         }
         else if (action === 'help') {
-            term.writeln('do [text]       - pridat ulohu (mozno oddelit ; pre viacero)');
+            term.writeln('do [text]       - pridat ulohu');
             term.writeln('list            - zobrazit vsetko');
             term.writeln('done [id]       - splnit ulohu');
-            term.writeln('del [id/all]    - vymazat ulohu alebo vsetko');
-            term.writeln('undo            - vratit poslednu zmenu');
-            term.writeln('focus [min] [id]- spustit casovac sustredenia (volitelne ID ulohy)');
-            term.writeln('stats           - zobrazit statistiky');
-            term.writeln('theme [nazov]   - zmenit farbu (alebo len "theme" pre menu)');
-            term.writeln('clear           - vycistit obrazovku');
+            term.writeln('del [id/all]    - vymazat ulohu/vsetko');
+            term.writeln('undo            - vratit zmenu');
+            term.writeln('focus [min] [id]- Focus mod (Matrix)');
+            term.writeln('theme [nazov]   - zmena farby');
+            term.writeln('sound [on/off]  - zapnut/vypnut zvuky');
+            term.writeln('clear           - vycistit');
         }
         else {
             if (cmd.trim() !== '') {
@@ -308,13 +380,13 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('tasks', JSON.stringify(tasks));
     }
 
-    // THEME SELECTION LOGIC
+    // THEME SELECTION
     function startThemeSelection() {
         themeSelectionActive = true;
         themeSelectionIndex = themeList.indexOf(currentTheme);
         if (themeSelectionIndex === -1) themeSelectionIndex = 0;
         term.writeln('=== VYBER TEMY ===');
-        term.writeln('Pouzite sipky (HORE/DOLE/VLAVO/VPRAVO) pre vyber, ENTER pre potvrdenie.');
+        term.writeln('Sipky pre vyber, ENTER pre potvrdenie.');
         renderThemeSelection();
     }
 
@@ -326,29 +398,21 @@ document.addEventListener('DOMContentLoaded', () => {
         term.write(`\r\x1b[K${line}`);
     }
 
-    // ==========================================
-    // FOCUS MODE & MATRIX EFFECT
-    // ==========================================
-
+    // FOCUS & MATRIX
     function startFocus(minutes, taskText) {
         focusActive = true;
         focusTimeLeft = minutes * 60;
 
-        // Hide terminal, show canvas/overlay
         terminalContainer.style.display = 'none';
         matrixCanvas.style.display = 'block';
         focusOverlay.style.display = 'flex';
 
-        // Apply theme color to overlay
         const color = themes[currentTheme].foreground;
         focusOverlay.style.color = color;
         focusTimerEl.style.textShadow = `0 0 20px ${color}`;
         focusTaskEl.style.textShadow = `0 0 10px ${color}`;
-
-        // Set Task Text
         focusTaskEl.innerText = taskText;
 
-        // Start Timer
         updateTimerDisplay();
         focusInterval = setInterval(() => {
             focusTimeLeft--;
@@ -356,7 +420,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (focusTimeLeft <= 0) stopFocus(true);
         }, 1000);
 
-        // Start Matrix
         startMatrixEffect();
     }
 
@@ -371,16 +434,14 @@ document.addEventListener('DOMContentLoaded', () => {
         clearInterval(focusInterval);
         stopMatrixEffect();
 
-        // Hide canvas/overlay, show terminal
         matrixCanvas.style.display = 'none';
         focusOverlay.style.display = 'none';
         terminalContainer.style.display = 'block';
-
-        // Restore terminal focus
         term.focus();
 
         term.write('\r\n');
         if (finished) {
+            playSuccessSound(); // Sound on focus finish
             term.writeln('[SYSTEM]: Cas vyprsal. Dobra praca.');
         } else {
             term.writeln('[SYSTEM]: Focus mode preruseny.');
@@ -388,12 +449,12 @@ document.addEventListener('DOMContentLoaded', () => {
         term.write('\r\n> ');
     }
 
-    // Matrix Logic
+    // Matrix Logic (Optimized)
     let drops = [];
     let lastFrameTime = 0;
-    const frameDelay = 50; // Spomalenie: vykresli snimku kazdych 50ms (cca 20 FPS)
+    const frameDelay = 50; 
     const fontSize = 16;
-    const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%^&*\u0020";
+    const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%^&*";
 
     function startMatrixEffect() {
         resizeMatrix();
@@ -401,17 +462,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         function draw(currentTime) {
             if (!focusActive) return;
-            
             requestAnimationFrame(draw);
 
-            // Ak neubehlo dostatok casu od poslednej snimky, nic nerob
             if (currentTime - lastFrameTime < frameDelay) return;
             lastFrameTime = currentTime;
 
             ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
             ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
 
-            // Set text color based on theme
             ctx.fillStyle = themes[currentTheme].foreground;
             ctx.font = fontSize + 'px monospace';
 
@@ -428,18 +486,13 @@ document.addEventListener('DOMContentLoaded', () => {
         requestAnimationFrame(draw);
     }
 
-    function stopMatrixEffect() {
-        // Nothing specific needed as loop checks focusActive
-    }
+    function stopMatrixEffect() {}
 
     function resizeMatrix() {
         matrixCanvas.width = window.innerWidth;
         matrixCanvas.height = window.innerHeight;
-        
         const columns = matrixCanvas.width / fontSize;
         drops = [];
-        for (let x = 0; x < columns; x++) {
-            drops[x] = 1;
-        }
+        for (let x = 0; x < columns; x++) drops[x] = 1;
     }
 });
