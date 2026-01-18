@@ -17,13 +17,29 @@ term.writeln('=== ZEN TERMINAL v1.0 ===');
 term.writeln('Zadaj "help" pre zoznam prikazov.');
 term.write('\r\n> ');
 
+// DATA & STATE
 let input = '';
 let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
 let previousTasks = null;
 let commandHistory = [];
 let historyIndex = 0;
+let totalCompleted = parseInt(localStorage.getItem('zen_total_completed')) || 0;
 
+// FOCUS MODE STATE
+let focusActive = false;
+let focusInterval = null;
+let focusTimeLeft = 0;
+
+// INPUT HANDLING
 term.onData(e => {
+    // Ak bezi Focus mod, ignorujeme vsetko okrem 'q' pre ukoncenie
+    if (focusActive) {
+        if (e === 'q' || e === 'Q') {
+            stopFocus();
+        }
+        return;
+    }
+
     switch (e) {
         case '\r': // Enter
             if (input.trim().length > 0) {
@@ -32,7 +48,8 @@ term.onData(e => {
             }
             handleCommand(input);
             input = '';
-            term.write('\r\n> ');
+            // Prompt sa vypise len ak neskoncil focus mod (ten si riesi vlastny vypis)
+            if (!focusActive) term.write('\r\n> ');
             break;
         case '\u007F': // Backspace
             if (input.length > 0) {
@@ -64,7 +81,6 @@ term.onData(e => {
 });
 
 function setInput(newInput) {
-    // Vycisti aktualny riadok (visual backspace)
     while (input.length > 0) {
         term.write('\b \b');
         input = input.slice(0, -1);
@@ -73,6 +89,7 @@ function setInput(newInput) {
     term.write(input);
 }
 
+// COMMAND LOGIC
 function handleCommand(cmd) {
     term.write('\r\n');
     const parts = cmd.trim().split(' ');
@@ -104,6 +121,11 @@ function handleCommand(cmd) {
         if (task) {
             saveState();
             task.done = true;
+            
+            // Stats update
+            totalCompleted++;
+            localStorage.setItem('zen_total_completed', totalCompleted);
+
             save();
             term.writeln('[SYSTEM]: Dopamin uvolneny. Uloha splnena.');
         } else {
@@ -140,6 +162,19 @@ function handleCommand(cmd) {
             term.writeln('[SYSTEM]: Niet sa kam vratit.');
         }
     }
+    else if (action === 'focus') {
+        const minutes = parseInt(args);
+        if (!isNaN(minutes) && minutes > 0) {
+            startFocus(minutes);
+        } else {
+            term.writeln('[CHYBA]: Zadajte pocet minut. (napr. focus 25)');
+        }
+    }
+    else if (action === 'stats') {
+        term.writeln('=== STATISTIKA ===');
+        term.writeln(`Celkovo splnenych uloh: ${totalCompleted}`);
+        term.writeln(`Aktualne v zozname:     ${tasks.length}`);
+    }
     else if (action === 'clear') {
         term.clear();
     }
@@ -149,13 +184,18 @@ function handleCommand(cmd) {
         term.writeln('done [id]       - splnit ulohu');
         term.writeln('del [id/all]    - vymazat ulohu alebo vsetko');
         term.writeln('undo            - vratit poslednu zmenu');
+        term.writeln('focus [min]     - spustit casovac sustredenia');
+        term.writeln('stats           - zobrazit statistiky');
         term.writeln('clear           - vycistit obrazovku');
     }
     else {
-        term.writeln(`[CHYBA]: Prikaz "${action}" nepoznam. Skuste "help".`);
+        if (cmd.trim() !== '') {
+            term.writeln(`[CHYBA]: Prikaz "${action}" nepoznam. Skuste "help".`);
+        }
     }
 }
 
+// HELPERS
 function saveState() {
     previousTasks = JSON.parse(JSON.stringify(tasks));
 }
@@ -166,4 +206,49 @@ function reindex() {
 
 function save() {
     localStorage.setItem('tasks', JSON.stringify(tasks));
+}
+
+// FOCUS MODE LOGIC
+function startFocus(minutes) {
+    focusActive = true;
+    focusTimeLeft = minutes * 60;
+    
+    term.clear();
+    term.writeln('=== FOCUS MODE ===');
+    term.writeln('Stlac "q" pre ukoncenie.');
+    term.write('\r\n');
+    
+    updateTimerDisplay();
+    
+    focusInterval = setInterval(() => {
+        focusTimeLeft--;
+        updateTimerDisplay();
+        
+        if (focusTimeLeft <= 0) {
+            stopFocus(true);
+        }
+    }, 1000);
+}
+
+function updateTimerDisplay() {
+    const min = Math.floor(focusTimeLeft / 60).toString().padStart(2, '0');
+    const sec = (focusTimeLeft % 60).toString().padStart(2, '0');
+    
+    // Prepise aktualny riadok
+    term.write(`\r\x1b[K > CAS: ${min}:${sec}`);
+}
+
+function stopFocus(finished = false) {
+    focusActive = false;
+    clearInterval(focusInterval);
+    term.write('\r\n\r\n');
+    
+    if (finished) {
+        term.writeln('[SYSTEM]: Cas vyprsal. Dobra praca.');
+        // Tu by sa dal pridat zvuk
+    } else {
+        term.writeln('[SYSTEM]: Focus mode preruseny.');
+    }
+    
+    term.write('\r\n> ');
 }

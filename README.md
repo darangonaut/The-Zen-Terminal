@@ -38,6 +38,15 @@ Na ovládanie aplikácie sú dostupné nasledujúce príkazy:
 *   **`undo`**
     *   Vráti späť poslednú vykonanú zmenu (pridanie, splnenie alebo vymazanie úlohy).
 
+*   **`focus [minúty]`**
+    *   Spustí režim hlbokého sústredenia na zadaný počet minút.
+    *   Počas tohto režimu je obrazovka vyčistená a zobrazuje sa len odpočítavanie času.
+    *   Režim ukončíte automaticky po uplynutí času alebo stlačením klávesu `q`.
+    *   *Príklad:* `focus 25` (Pomodoro technika)
+
+*   **`stats`**
+    *   Zobrazí dlhodobé štatistiky vašej produktivity (celkový počet splnených úloh).
+
 *   **`clear`**
     *   Vyčistí obrazovku terminálu, ak chcete začať s čistým štítom.
 
