@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.1.0/lib/xterm.js"></script>
+    <style>
+        body {
+            background: #000;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #terminal-container {
+            width: 80%;
+            height: 60%;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="terminal-container"></div>
+
+    <script>
+        const term = new Terminal({
+            cursorBlink: true,
+            theme: { background: '#000', foreground: '#00ff00' },
+            fontFamily: 'Courier New, monospace',
+            fontSize: 18
+        });
+
+        term.open(document.getElementById('terminal-container'));
+        term.writeln('=== ZEN TERMINAL v1.0 ===');
+        term.writeln('Zadaj "help" pre zoznam prikazov.');
+        term.write('\r\n> ');
+
+        let input = '';
+        let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+
+        term.onData(e => {
+            switch (e) {
+                case '\r': // Enter
+                    handleCommand(input);
+                    input = '';
+                    term.write('\r\n> ');
+                    break;
+                case '\u007F': // Backspace
+                    if (input.length > 0) {
+                        input = input.slice(0, -1);
+                        term.write('\b \b');
+                    }
+                    break;
+                default:
+                    if (e >= ' ' && e <= '~') {
+                        input += e;
+                        term.write(e);
+                    }
+            }
+        });
+
+        function handleCommand(cmd) {
+            term.write('\r\n');
+            const parts = cmd.trim().split(' ');
+            const action = parts[0].toLowerCase();
+            const args = parts.slice(1).join(' ');
+
+            if (action === 'do') {
+                tasks.push({ id: tasks.length + 1, text: args, done: false });
+                save();
+                term.writeln(`[SYSTEM]: Uloha "${args}" bola pridana do kognitivnej matice.`);
+            }
+            else if (action === 'list') {
+                if (tasks.length === 0) term.writeln('[SYSTEM]: Prazdnota. Ziadne ulohy.');
+                tasks.forEach(t => term.writeln(`${t.id}. [${t.done ? 'X' : ' '}] ${t.text}`));
+            }
+            else if (action === 'done') {
+                const id = parseInt(args) - 1;
+                if (tasks[id]) {
+                    tasks[id].done = true;
+                    save();
+                    term.writeln('[SYSTEM]: Dopamin uvolneny. Uloha splnena.');
+                }
+            }
+            else if (action === 'clear') {
+                term.clear();
+            }
+            else if (action === 'help') {
+                term.writeln('do [text]    - pridat ulohu');
+                term.writeln('list         - zobrazit vsetko');
+                term.writeln('done [id]    - splnit ulohu');
+                term.writeln('clear        - vycistit obrazovku');
+            }
+            else {
+                term.writeln(`[CHYBA]: Prikaz "${action}" nepoznam. Skuste "help".`);
+            }
+        }
+
+        function save() {
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+        }
+    </script>
+</body>
+
+</html>
