@@ -32,6 +32,18 @@ let previousTasks = null;
 let commandHistory = [];
 let historyIndex = 0;
 let totalCompleted = parseInt(localStorage.getItem('zen_total_completed')) || 0;
+let currentTheme = localStorage.getItem('zen_theme') || 'green';
+
+const themes = {
+    green: { foreground: '#00ff00', background: '#000000', cursor: '#00ff00' },
+    amber: { foreground: '#ffb000', background: '#000000', cursor: '#ffb000' },
+    cyan:  { foreground: '#00ffff', background: '#000000', cursor: '#00ffff' }
+};
+
+// INITIAL THEME APPLICATION
+if (themes[currentTheme]) {
+    term.options.theme = themes[currentTheme];
+}
 
 // FOCUS MODE STATE
 let focusActive = false;
@@ -183,6 +195,14 @@ function handleCommand(cmd) {
         term.writeln(`Celkovo splnenych uloh: ${totalCompleted}`);
         term.writeln(`Aktualne v zozname:     ${tasks.length}`);
     }
+    else if (action === 'theme') {
+        if (themes[args]) {
+            applyTheme(args);
+            term.writeln(`[SYSTEM]: Tema zmenena na "${args}".`);
+        } else {
+            term.writeln('[CHYBA]: Neznama tema. Dostupne: green, amber, cyan.');
+        }
+    }
     else if (action === 'clear') {
         term.clear();
     }
@@ -194,6 +214,7 @@ function handleCommand(cmd) {
         term.writeln('undo            - vratit poslednu zmenu');
         term.writeln('focus [min]     - spustit casovac sustredenia');
         term.writeln('stats           - zobrazit statistiky');
+        term.writeln('theme [nazov]   - zmenit farbu (green, amber, cyan)');
         term.writeln('clear           - vycistit obrazovku');
     }
     else {
@@ -204,6 +225,12 @@ function handleCommand(cmd) {
 }
 
 // HELPERS
+function applyTheme(themeName) {
+    currentTheme = themeName;
+    term.options.theme = themes[themeName];
+    localStorage.setItem('zen_theme', themeName);
+}
+
 function saveState() {
     previousTasks = JSON.parse(JSON.stringify(tasks));
 }

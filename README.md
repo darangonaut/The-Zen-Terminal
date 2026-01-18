@@ -47,6 +47,11 @@ Na ovládanie aplikácie sú dostupné nasledujúce príkazy:
 *   **`stats`**
     *   Zobrazí dlhodobé štatistiky vašej produktivity (celkový počet splnených úloh).
 
+*   **`theme [názov]`**
+    *   Zmení farebnú schému terminálu.
+    *   Dostupné témy: `green` (zelená), `amber` (jantárová), `cyan` (azúrová).
+    *   *Príklad:* `theme amber`
+
 *   **`clear`**
     *   Vyčistí obrazovku terminálu, ak chcete začať s čistým štítom.
 
