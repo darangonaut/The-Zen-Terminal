@@ -31,6 +31,13 @@ Na ovládanie aplikácie sú dostupné nasledujúce príkazy:
     *   Označí úlohu so zadaným číslom (ID) ako splnenú.
     *   *Príklad:* `done 1`
 
+*   **`del [id/all]`**
+    *   Odstráni konkrétnu úlohu podľa ID alebo vymaže celý zoznam (`del all`).
+    *   Po odstránení úlohy sa zvyšné položky automaticky prečíslujú.
+
+*   **`undo`**
+    *   Vráti späť poslednú vykonanú zmenu (pridanie, splnenie alebo vymazanie úlohy).
+
 *   **`clear`**
     *   Vyčistí obrazovku terminálu, ak chcete začať s čistým štítom.
 

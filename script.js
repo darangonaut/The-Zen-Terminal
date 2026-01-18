@@ -19,6 +19,7 @@ term.write('\r\n> ');
 
 let input = '';
 let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+let previousTasks = null;
 let commandHistory = [];
 let historyIndex = 0;
 
@@ -82,11 +83,13 @@ function handleCommand(cmd) {
         const newTasks = args.split(';').map(t => t.trim()).filter(t => t.length > 0);
         
         if (newTasks.length > 0) {
+            saveState();
             newTasks.forEach(taskText => {
                 tasks.push({ id: tasks.length + 1, text: taskText, done: false });
                 term.writeln(`[SYSTEM]: Uloha "${taskText}" bola pridana do kognitivnej matice.`);
             });
             save();
+            reindex();
         } else {
              term.writeln(`[CHYBA]: Nezadali ste ziadny text ulohy.`);
         }
@@ -96,25 +99,69 @@ function handleCommand(cmd) {
         tasks.forEach(t => term.writeln(`${t.id}. [${t.done ? 'X' : ' '}] ${t.text}`));
     }
     else if (action === 'done') {
-        const id = parseInt(args) - 1;
-        if (tasks[id]) {
-            tasks[id].done = true;
+        const id = parseInt(args);
+        const task = tasks.find(t => t.id === id);
+        if (task) {
+            saveState();
+            task.done = true;
             save();
             term.writeln('[SYSTEM]: Dopamin uvolneny. Uloha splnena.');
+        } else {
+            term.writeln(`[CHYBA]: Uloha s ID ${args} neexistuje.`);
+        }
+    }
+    else if (action === 'del') {
+        if (args === 'all') {
+            saveState();
+            tasks = [];
+            save();
+            term.writeln('[SYSTEM]: Kognitivna matica bola vycistena.');
+        } else {
+            const id = parseInt(args);
+            const index = tasks.findIndex(t => t.id === id);
+            if (index !== -1) {
+                saveState();
+                tasks.splice(index, 1);
+                reindex();
+                save();
+                term.writeln(`[SYSTEM]: Uloha ${id} bola odstranena.`);
+            } else {
+                term.writeln(`[CHYBA]: Uloha s ID ${args} neexistuje.`);
+            }
+        }
+    }
+    else if (action === 'undo') {
+        if (previousTasks) {
+            tasks = JSON.parse(JSON.stringify(previousTasks));
+            previousTasks = null;
+            save();
+            term.writeln('[SYSTEM]: Casova slucka uzavreta. Posledna zmena bola vratena.');
+        } else {
+            term.writeln('[SYSTEM]: Niet sa kam vratit.');
         }
     }
     else if (action === 'clear') {
         term.clear();
     }
     else if (action === 'help') {
-        term.writeln('do [text]    - pridat ulohu (mozno oddelit ; pre viacero)');
-        term.writeln('list         - zobrazit vsetko');
-        term.writeln('done [id]    - splnit ulohu');
-        term.writeln('clear        - vycistit obrazovku');
+        term.writeln('do [text]       - pridat ulohu (mozno oddelit ; pre viacero)');
+        term.writeln('list            - zobrazit vsetko');
+        term.writeln('done [id]       - splnit ulohu');
+        term.writeln('del [id/all]    - vymazat ulohu alebo vsetko');
+        term.writeln('undo            - vratit poslednu zmenu');
+        term.writeln('clear           - vycistit obrazovku');
     }
     else {
         term.writeln(`[CHYBA]: Prikaz "${action}" nepoznam. Skuste "help".`);
     }
+}
+
+function saveState() {
+    previousTasks = JSON.parse(JSON.stringify(tasks));
+}
+
+function reindex() {
+    tasks.forEach((t, i) => t.id = i + 1);
 }
 
 function save() {
