@@ -19,10 +19,16 @@ term.write('\r\n> ');
 
 let input = '';
 let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+let commandHistory = [];
+let historyIndex = 0;
 
 term.onData(e => {
     switch (e) {
         case '\r': // Enter
+            if (input.trim().length > 0) {
+                commandHistory.push(input);
+                historyIndex = commandHistory.length;
+            }
             handleCommand(input);
             input = '';
             term.write('\r\n> ');
@@ -33,6 +39,21 @@ term.onData(e => {
                 term.write('\b \b');
             }
             break;
+        case '\u001b[A': // Arrow Up
+            if (historyIndex > 0) {
+                historyIndex--;
+                setInput(commandHistory[historyIndex]);
+            }
+            break;
+        case '\u001b[B': // Arrow Down
+            if (historyIndex < commandHistory.length - 1) {
+                historyIndex++;
+                setInput(commandHistory[historyIndex]);
+            } else {
+                historyIndex = commandHistory.length;
+                setInput('');
+            }
+            break;
         default:
             if (e >= ' ' && e <= '~') {
                 input += e;
@@ -40,6 +61,16 @@ term.onData(e => {
             }
     }
 });
+
+function setInput(newInput) {
+    // Vycisti aktualny riadok (visual backspace)
+    while (input.length > 0) {
+        term.write('\b \b');
+        input = input.slice(0, -1);
+    }
+    input = newInput;
+    term.write(input);
+}
 
 function handleCommand(cmd) {
     term.write('\r\n');
