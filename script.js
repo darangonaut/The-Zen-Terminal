@@ -79,9 +79,17 @@ function handleCommand(cmd) {
     const args = parts.slice(1).join(' ');
 
     if (action === 'do') {
-        tasks.push({ id: tasks.length + 1, text: args, done: false });
-        save();
-        term.writeln(`[SYSTEM]: Uloha "${args}" bola pridana do kognitivnej matice.`);
+        const newTasks = args.split(';').map(t => t.trim()).filter(t => t.length > 0);
+        
+        if (newTasks.length > 0) {
+            newTasks.forEach(taskText => {
+                tasks.push({ id: tasks.length + 1, text: taskText, done: false });
+                term.writeln(`[SYSTEM]: Uloha "${taskText}" bola pridana do kognitivnej matice.`);
+            });
+            save();
+        } else {
+             term.writeln(`[CHYBA]: Nezadali ste ziadny text ulohy.`);
+        }
     }
     else if (action === 'list') {
         if (tasks.length === 0) term.writeln('[SYSTEM]: Prazdnota. Ziadne ulohy.');
@@ -99,7 +107,7 @@ function handleCommand(cmd) {
         term.clear();
     }
     else if (action === 'help') {
-        term.writeln('do [text]    - pridat ulohu');
+        term.writeln('do [text]    - pridat ulohu (mozno oddelit ; pre viacero)');
         term.writeln('list         - zobrazit vsetko');
         term.writeln('done [id]    - splnit ulohu');
         term.writeln('clear        - vycistit obrazovku');

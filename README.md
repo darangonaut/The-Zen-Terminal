@@ -18,7 +18,10 @@ Na ovládanie aplikácie sú dostupné nasledujúce príkazy:
 
 *   **`do [text]`**
     *   Pridá novú úlohu do vašej "kognitívnej matice".
-    *   *Príklad:* `do Kúpiť mlieko`
+    *   Podporuje pridávanie viacerých úloh naraz pomocou bodkočiarky `;`.
+    *   *Príklady:*
+        *   `do Kúpiť mlieko`
+        *   `do Jogging; Meditácia; Čítať knihu`
 
 *   **`list`**
     *   Zobrazí zoznam všetkých evidovaných úloh aj s ich stavom (splnené/nesplnené).
