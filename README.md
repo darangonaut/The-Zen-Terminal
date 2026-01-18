@@ -72,6 +72,7 @@ Na ovládanie aplikácie sú dostupné nasledujúce príkazy:
 
 ## Klávesové skratky
 
+*   **Tab:** Automatické dopĺňanie príkazov (Autocomplete).
 *   **Šípka Hore / Dole:** Listovanie v histórii zadaných príkazov.
 *   **Šípky (v menu Theme):** Výber témy.
 *   **q / Esc:** Ukončenie Focus módu alebo výberu témy.

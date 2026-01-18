@@ -20,6 +20,19 @@ document.addEventListener('DOMContentLoaded', () => {
     term.open(terminalContainer);
     fitAddon.fit();
 
+    // CUSTOM KEY HANDLER (Handling Tab for Autocomplete)
+    term.attachCustomKeyEventHandler((arg) => {
+        if (arg.key === 'Tab') {
+            if (arg.type === 'keydown') {
+                arg.preventDefault(); // Stop browser default (focus switch)
+                arg.stopPropagation();
+                handleAutocomplete();
+            }
+            return false; // Stop xterm from processing it further
+        }
+        return true;
+    });
+
     window.addEventListener('resize', () => {
         fitAddon.fit();
         if (focusActive) resizeMatrix();
@@ -29,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     term.writeln('  ______              _______                  _             _ ');
     term.writeln(' |___  /             |__   __|                (_)           | |');
     term.writeln('    / /  ___ _ __       | | ___ _ __ _ __ ___  _ _ __   __ _| |');
-    term.writeln('   / /  / _ \ _ \      | |/ _ \ __| _ ` _ \| | _ \ / _` | |');
+    term.writeln('   / /  / _ \ _ \      | |/ _ \ __| _ ` _ \| | _ \ / _` | |');
     term.writeln('  / /__|  __/ | | |     | |  __/ |  | | | | | | | | | | (_| | |');
     term.writeln(' /_____|\___|_| |_|     |_|\___|_|  |_| |_| |_|_|_| |_|\__,_|_|');
     term.writeln('');
@@ -47,6 +60,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let totalCompleted = parseInt(localStorage.getItem('zen_total_completed')) || 0;
     let currentTheme = localStorage.getItem('zen_theme') || 'green';
     let soundEnabled = localStorage.getItem('zen_sound') === 'true'; // Default false
+
+    // List of available commands for Autocomplete
+    const availableCommands = [
+        'do', 'list', 'done', 'del', 'undo', 'focus', 
+        'stats', 'theme', 'sound', 'help', 'clear'
+    ];
 
     const themes = {
         green: { foreground: '#00ff00', background: '#000000', cursor: '#00ff00' },
@@ -66,12 +85,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!soundEnabled) return;
         if (audioCtx.state === 'suspended') audioCtx.resume();
 
-        // Mechanical Click Simulation
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
 
         osc.type = 'triangle';
-        // Random pitch variation for realism
         osc.frequency.value = 600 + Math.random() * 200; 
         
         gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
@@ -90,12 +107,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const now = audioCtx.currentTime;
         
-        // Osc 1: Base tone
         const osc1 = audioCtx.createOscillator();
         const gain1 = audioCtx.createGain();
         osc1.type = 'sine';
-        osc1.frequency.setValueAtTime(523.25, now); // C5
-        osc1.frequency.exponentialRampToValueAtTime(1046.50, now + 0.1); // Slide to C6
+        osc1.frequency.setValueAtTime(523.25, now); 
+        osc1.frequency.exponentialRampToValueAtTime(1046.50, now + 0.1);
         
         gain1.gain.setValueAtTime(0.1, now);
         gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
@@ -105,11 +121,10 @@ document.addEventListener('DOMContentLoaded', () => {
         osc1.start();
         osc1.stop(now + 0.5);
 
-        // Osc 2: Harmony
         const osc2 = audioCtx.createOscillator();
         const gain2 = audioCtx.createGain();
         osc2.type = 'triangle';
-        osc2.frequency.setValueAtTime(659.25, now); // E5
+        osc2.frequency.setValueAtTime(659.25, now); 
         
         gain2.gain.setValueAtTime(0.05, now);
         gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
@@ -138,11 +153,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // AUTOCOMPLETE LOGIC
+    function handleAutocomplete() {
+        const parts = input.split(' ');
+        // Only autocomplete the first word (command) for now
+        if (parts.length === 1 && input.length > 0) {
+            const matches = availableCommands.filter(cmd => cmd.startsWith(input));
+            
+            if (matches.length === 1) {
+                // Unique match found
+                const completed = matches[0];
+                // Calculate what to add
+                const remainder = completed.substring(input.length);
+                input = completed + ' ';
+                term.write(remainder + ' ');
+            } else if (matches.length > 1) {
+                // Multiple matches found - print them
+                term.writeln('\r\n' + matches.join('  '));
+                term.write('> ' + input);
+            }
+        }
+    }
+
     // TERMINAL INPUT HANDLING
     term.onData(e => {
         if (focusActive) return;
 
-        // Play sound on typing (filter out control sequences mostly)
+        // Play sound on typing
         if (e.length === 1 && e.charCodeAt(0) >= 32) {
             playKeySound();
         }
@@ -171,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // STANDARD MODE
         switch (e) {
             case '\r': // Enter
-                playKeySound(); // Enter sound
+                playKeySound();
                 if (input.trim().length > 0) {
                     commandHistory.push(input);
                     historyIndex = commandHistory.length;
@@ -201,6 +238,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     historyIndex = commandHistory.length;
                     setInput('');
                 }
+                break;
+            case '\t': // Tab - handled by customKeyHandler, ignore here
                 break;
             default:
                 if (e >= ' ' && e <= '~') {
@@ -330,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 soundEnabled = true;
                 localStorage.setItem('zen_sound', 'true');
                 term.writeln('[SYSTEM]: Audio modul aktivovany.');
-                playSuccessSound(); // Demo
+                playSuccessSound(); 
             } else if (args === 'off') {
                 soundEnabled = false;
                 localStorage.setItem('zen_sound', 'false');
@@ -344,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
             term.clear();
         }
         else if (action === 'help') {
-            term.writeln('do [text]       - pridat ulohu');
+            term.writeln('do [text]       -pridat ulohu');
             term.writeln('list            - zobrazit vsetko');
             term.writeln('done [id]       - splnit ulohu');
             term.writeln('del [id/all]    - vymazat ulohu/vsetko');
