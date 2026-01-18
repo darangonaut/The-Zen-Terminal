@@ -7,7 +7,8 @@ import { startFocus } from './focus.js';
 
 export const availableCommands = [
     'do', 'list', 'done', 'del', 'undo', 'focus', 
-    'stats', 'theme', 'sound', 'help', 'clear'
+    'stats', 'theme', 'sound', 'help', 'clear',
+    'export', 'import'
 ];
 
 export function handleCommand(cmd) {
@@ -121,6 +122,83 @@ export function handleCommand(cmd) {
     else if (action === 'clear') {
         term.clear();
     }
+    else if (action === 'export') {
+        const dataToExport = {
+            tasks: state.tasks,
+            theme: state.currentTheme,
+            totalCompleted: state.totalCompleted,
+            version: '1.0'
+        };
+        try {
+            // Bezpecne kodovanie Unicode znakov (diakritiky) pre Base64
+            const json = JSON.stringify(dataToExport);
+            const exportString = btoa(unescape(encodeURIComponent(json)));
+            
+            // Funkcia pre vypis do terminalu (pouzita v oboch pripadoch)
+            const printToTerminal = () => {
+                term.writeln('=== EXPORT DAT ===');
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    term.writeln('[SYSTEM]: Kod bol skopirovany do schranky.');
+                } else {
+                    term.writeln('Skopirujte nasledujuci kod:');
+                }
+                term.writeln('');
+                term.writeln(exportString);
+                term.writeln('');
+                term.writeln('Pre obnovenie pouzite: import [kod]');
+            };
+
+            // Pokus o kopirovanie
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(exportString)
+                    .then(() => printToTerminal())
+                    .catch(() => printToTerminal());
+            } else {
+                printToTerminal();
+            }
+
+        } catch (e) {
+            console.error(e); // Pre debugovanie v konzole
+            term.writeln('[CHYBA]: Export zlyhal (pravdepodobne problem s kódovaním znakov).');
+        }
+    }
+    else if (action === 'import') {
+        if (!args) {
+            term.writeln('[CHYBA]: Chyba importovaci kod. Pouzitie: import [kod]');
+            return;
+        }
+        
+        try {
+            // Odstranenie bielych znakov
+            const cleanArgs = args.replace(/\s+/g, '');
+            // Dekodovanie Unicode znakov z Base64
+            const jsonString = decodeURIComponent(escape(atob(cleanArgs)));
+            const data = JSON.parse(jsonString);
+
+            if (Array.isArray(data.tasks)) {
+                saveStateSnapshot();
+                
+                state.tasks = data.tasks;
+                if (data.totalCompleted) state.totalCompleted = data.totalCompleted;
+                if (data.theme && themes[data.theme]) {
+                    state.currentTheme = data.theme;
+                    applyTheme(data.theme);
+                }
+
+                saveTasks();
+                saveTotalCompleted();
+                reindexTasks();
+
+                term.writeln('[SYSTEM]: Data uspesne obnovene z importu.');
+                term.writeln(`[INFO]: Nacitanych ${state.tasks.length} uloh.`);
+            } else {
+                throw new Error('Neplatna struktura dat');
+            }
+        } catch (e) {
+            term.writeln('[CHYBA]: Nepodarilo sa spracovat importovaci kod.');
+            term.writeln('Uistite sa, ze ste skopirovali cely kod spravne.');
+        }
+    }
     else if (action === 'help') {
         term.writeln('do [text]       - pridat ulohu');
         term.writeln('list            - zobrazit vsetko');
@@ -130,6 +208,8 @@ export function handleCommand(cmd) {
         term.writeln('focus [min] [id]- Focus mod (Matrix)');
         term.writeln('theme [nazov]   - zmena farby');
         term.writeln('sound [on/off]  - zapnut/vypnut zvuky');
+        term.writeln('export          - exportovat data');
+        term.writeln('import [kod]    - importovat data');
         term.writeln('clear           - vycistit');
     }
     else {
