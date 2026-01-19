@@ -57,6 +57,17 @@ export function handleCommand(cmd) {
             state.tasks = [];
             saveTasks();
             term.writeln('[SYSTEM]: Cognitive matrix cleared.');
+        } else if (args === 'done') {
+            const completedCount = state.tasks.filter(t => t.done).length;
+            if (completedCount > 0) {
+                saveStateSnapshot();
+                state.tasks = state.tasks.filter(t => !t.done);
+                reindexTasks();
+                saveTasks();
+                term.writeln(`[SYSTEM]: Removed ${completedCount} completed tasks. Focus restored.`);
+            } else {
+                term.writeln('[SYSTEM]: No completed tasks to remove.');
+            }
         } else {
             const id = parseInt(args);
             const index = state.tasks.findIndex(t => t.id === id);
@@ -151,7 +162,7 @@ export function handleCommand(cmd) {
         term.writeln('  do [text]       - add task(s)');
         term.writeln('  list            - show all tasks');
         term.writeln('  done [id]       - complete task');
-        term.writeln('  del [id/all]    - delete task or all');
+        term.writeln('  del [id/all/done] - delete specific, all, or done');
         term.writeln('  undo            - revert last change');
 
         term.writeln('\r\n=== FOCUS & VISUALS ===');
@@ -178,6 +189,8 @@ export function handleCommand(cmd) {
 
 export function handleAutocomplete(input, setInputCallback) {
     const parts = input.split(' ');
+    
+    // 1. Doplnanie hlavnych prikazov
     if (parts.length === 1 && input.length > 0) {
         const matches = availableCommands.filter(cmd => cmd.startsWith(input));
         
@@ -189,6 +202,31 @@ export function handleAutocomplete(input, setInputCallback) {
             setInputCallback(newInput);
         } else if (matches.length > 1) {
             term.writeln('\r\n' + matches.join('  '));
+            term.write(`${state.prompt}${input}`);
+        }
+    } 
+    // 2. Doplnanie argumentov pre specificke prikazy
+    else if (parts.length === 2) {
+        const action = parts[0].toLowerCase();
+        const argPrefix = parts[1].toLowerCase();
+        let subMatches = [];
+
+        if (action === 'del') {
+            subMatches = ['all', 'done'].filter(s => s.startsWith(argPrefix));
+        } else if (action === 'sound') {
+            subMatches = ['on', 'off'].filter(s => s.startsWith(argPrefix));
+        } else if (action === 'theme') {
+            subMatches = Object.keys(themes).filter(s => s.startsWith(argPrefix));
+        }
+
+        if (subMatches.length === 1) {
+            const completed = subMatches[0];
+            const remainder = completed.substring(argPrefix.length);
+            const newInput = input + remainder;
+            term.write(remainder);
+            setInputCallback(newInput);
+        } else if (subMatches.length > 1) {
+            term.writeln('\r\n' + subMatches.join('  '));
             term.write(`${state.prompt}${input}`);
         }
     }
