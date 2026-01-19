@@ -9,10 +9,11 @@ The Zen Terminal operates as a web-based command-line simulation. All interactio
 ### Key Features
 
 *   **Authentic Experience:** Built on `xterm.js` with retro visuals.
+*   **Cloud Sync:** Securely synchronize your tasks and settings across devices using Google Identity Services and Firebase.
 *   **Focus Mode (Matrix):** A special concentration mode featuring falling characters (Matrix rain effect) and a countdown timer.
 *   **Visual Themes:** Switch between classic **Green**, **Amber**, and **Cyan** color schemes.
 *   **Command History:** Navigate through previous commands using Up/Down arrows.
-*   **Data Persistence:** Tasks and settings are automatically saved in the browser (LocalStorage).
+*   **Data Persistence:** Automatic local saving (LocalStorage) with optional Cloud backup.
 *   **Batch Actions:** Support for adding multiple tasks at once.
 
 ## Commands
@@ -61,9 +62,20 @@ The following commands are available to control the application:
 
 *   **`stats`**
     *   Displays the total number of completed tasks (long-term statistics).
-    
+
+### Cloud & Data
+
+*   **`login`**
+    *   Initiates Google Login and synchronizes your data with the cloud.
+
+*   **`logout`**
+    *   Disconnects from the cloud and returns to local mode.
+
+*   **`whoami`**
+    *   Displays information about the currently logged-in user.
+
 *   **`export`**
-    *   Exports your current data (tasks & settings) to a secure code string, automatically copied to your clipboard.
+    *   Exports your current data to a secure code string, automatically copied to your clipboard.
     
 *   **`import [code]`**
     *   Restores data from a previously generated export code.

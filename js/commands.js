@@ -216,20 +216,29 @@ export function handleCommand(cmd) {
         }
     }
     else if (action === 'help') {
-        term.writeln('do [text]       - add task');
-        term.writeln('list            - show all');
-        term.writeln('done [id]       - complete task');
-        term.writeln('del [id/all]    - delete task/all');
-        term.writeln('undo            - revert change');
-        term.writeln('focus [min] [id]- Focus mode (Matrix)');
-        term.writeln('theme [name]    - change color');
-        term.writeln('sound [on/off]  - toggle sound');
-        term.writeln('export          - export data');
-        term.writeln('import [code]   - import data');
-        term.writeln('login           - sync with cloud');
-        term.writeln('logout          - disconnect cloud');
-        term.writeln('whoami          - show user info');
-        term.writeln('clear           - clear screen');
+        term.writeln('\r\n=== TASK MANAGEMENT ===');
+        term.writeln('  do [text]       - add task(s)');
+        term.writeln('  list            - show all tasks');
+        term.writeln('  done [id]       - complete task');
+        term.writeln('  del [id/all]    - delete task or all');
+        term.writeln('  undo            - revert last change');
+
+        term.writeln('\r\n=== FOCUS & VISUALS ===');
+        term.writeln('  focus [min]     - start Focus Mode (Matrix)');
+        term.writeln('  theme [name]    - change color scheme');
+        term.writeln('  sound [on/off]  - toggle sound effects');
+
+        term.writeln('\r\n=== CLOUD & DATA ===');
+        term.writeln('  login           - sync with Google Cloud');
+        term.writeln('  logout          - disconnect from cloud');
+        term.writeln('  export          - export data to clipboard');
+        term.writeln('  import [code]   - restore data from code');
+        term.writeln('  whoami          - show user info');
+
+        term.writeln('\r\n=== SYSTEM ===');
+        term.writeln('  stats           - show productivity stats');
+        term.writeln('  clear           - clear screen');
+        term.writeln('  help            - show this menu');
     }
     else {
         if (cmd.trim() !== '') {
