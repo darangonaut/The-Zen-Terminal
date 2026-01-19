@@ -1,4 +1,4 @@
-// COMMAND HANDLER
+// COMMAND HANDLER & BUSINESS LOGIC
 import { term } from './terminal.js';
 import { state, saveTasks, saveStateSnapshot, reindexTasks, saveTotalCompleted } from './state.js';
 import { playSuccessSound, toggleSound } from './audio.js';
@@ -6,260 +6,301 @@ import { applyTheme, themes, startThemeSelection } from './theme.js';
 import { startFocus } from './focus.js';
 import { loginUser, logoutUser, getCurrentUser } from './auth.js';
 
-export const availableCommands = [
-    'do', 'list', 'done', 'del', 'undo', 'focus', 
-    'stats', 'theme', 'sound', 'help', 'clear',
-    'login', 'logout', 'whoami', 'review'
-];
+// --- COMMAND IMPLEMENTATIONS ---
 
-export function handleCommand(cmd) {
-    term.write('\r\n');
-    const parts = cmd.trim().split(' ');
-    const action = parts[0].toLowerCase();
-    const args = parts.slice(1).join(' ');
-
-    if (action === 'do') {
-        const newTasks = args.split(';').map(t => t.trim()).filter(t => t.length > 0);
-        if (newTasks.length > 0) {
-            saveStateSnapshot();
-            newTasks.forEach(taskText => {
-                state.tasks.push({ id: state.tasks.length + 1, text: taskText, done: false });
-                term.writeln(`[SYSTEM]: Task "${taskText}" added to the cognitive matrix.`);
+function cmdDo(args) {
+    const newTasks = args.split(';').map(t => t.trim()).filter(t => t.length > 0);
+    if (newTasks.length > 0) {
+        saveStateSnapshot();
+        newTasks.forEach(taskText => {
+            state.tasks.push({
+                id: state.tasks.length + 1, 
+                text: taskText, 
+                done: false 
             });
-            saveTasks();
-            reindexTasks();
+            term.writeln(`[SYSTEM]: Task "${taskText}" added to the cognitive matrix.`);
+        });
+        saveTasks();
+        reindexTasks();
+    } else {
+         term.writeln(`[ERROR]: You didn't enter any task text.`);
+    }
+}
+
+function cmdList(args) {
+    if (state.tasks.length === 0) {
+        term.writeln('[SYSTEM]: Void. No tasks available.');
+        return;
+    }
+
+    if (args === 'tags') {
+        const tags = new Set();
+        state.tasks.forEach(t => {
+            const found = t.text.match(/@\w+/g);
+            if (found) found.forEach(tag => tags.add(tag));
+        });
+        
+        if (tags.size === 0) {
+            term.writeln('[SYSTEM]: No tags found used in tasks.');
         } else {
-             term.writeln(`[ERROR]: You didn't enter any task text.`);
+            term.writeln('=== ACTIVE TAGS ===');
+            tags.forEach(tag => term.writeln(tag));
+        }
+    } 
+    else if (args.startsWith('@')) {
+        const filtered = state.tasks.filter(t => t.text.includes(args));
+        if (filtered.length === 0) {
+            term.writeln(`[SYSTEM]: No tasks found with tag ${args}`);
+        } else {
+            term.writeln(`=== TASKS [${args}] ===`);
+            filtered.forEach(t => term.writeln(`${t.id}. [${t.done ? 'X' : ' '}] ${t.text}`));
         }
     }
-    else if (action === 'list') {
-        if (state.tasks.length === 0) {
-            term.writeln('[SYSTEM]: Void. No tasks available.');
-            return;
-        }
+    else {
+        state.tasks.forEach(t => term.writeln(`${t.id}. [${t.done ? 'X' : ' '}] ${t.text}`));
+    }
+}
 
-        if (args === 'tags') {
-            // Extract unique tags
-            const tags = new Set();
-            state.tasks.forEach(t => {
-                const found = t.text.match(/@\w+/g);
-                if (found) found.forEach(tag => tags.add(tag));
-            });
-            
-            if (tags.size === 0) {
-                term.writeln('[SYSTEM]: No tags found used in tasks.');
-            } else {
-                term.writeln('=== ACTIVE TAGS ===');
-                tags.forEach(tag => term.writeln(tag));
-            }
-        } 
-        else if (args.startsWith('@')) {
-            // Filter by tag
-            const filtered = state.tasks.filter(t => t.text.includes(args));
-            if (filtered.length === 0) {
-                term.writeln(`[SYSTEM]: No tasks found with tag ${args}`);
-            } else {
-                term.writeln(`=== TASKS [${args}] ===`);
-                filtered.forEach(t => term.writeln(`${t.id}. [${t.done ? 'X' : ' '}] ${t.text}`));
-            }
-        }
-        else {
-            // Show all
-            state.tasks.forEach(t => term.writeln(`${t.id}. [${t.done ? 'X' : ' '}] ${t.text}`));
-        }
+function cmdDone(args) {
+    const id = parseInt(args);
+    const task = state.tasks.find(t => t.id === id);
+    if (task) {
+        saveStateSnapshot();
+        task.done = true;
+        task.completedAt = Date.now();
+        state.totalCompleted++;
+        saveTotalCompleted();
+        saveTasks();
+        playSuccessSound();
+        term.writeln('[SYSTEM]: Dopamine released. Task completed.');
+    } else {
+        term.writeln(`[ERROR]: Task with ID ${args} does not exist.`);
     }
-    else if (action === 'done') {
-        const id = parseInt(args);
-        const task = state.tasks.find(t => t.id === id);
-        if (task) {
+}
+
+function cmdDel(args) {
+    if (args === 'all') {
+        saveStateSnapshot();
+        state.tasks = [];
+        saveTasks();
+        term.writeln('[SYSTEM]: Cognitive matrix cleared.');
+    } else if (args === 'done') {
+        const completedTasks = state.tasks.filter(t => t.done);
+        if (completedTasks.length > 0) {
             saveStateSnapshot();
-            task.done = true;
-            task.completedAt = Date.now();
-            state.totalCompleted++;
-            saveTotalCompleted();
+            // Archive tasks
+            completedTasks.forEach(t => {
+                if (!t.completedAt) t.completedAt = Date.now();
+                state.archive.push(t);
+            });
+            // Limit archive
+            if (state.archive.length > 100) state.archive = state.archive.slice(-100);
+            
+            state.tasks = state.tasks.filter(t => !t.done);
+            reindexTasks();
             saveTasks();
-            playSuccessSound();
-            term.writeln('[SYSTEM]: Dopamine released. Task completed.');
+            term.writeln(`[SYSTEM]: Archived ${completedTasks.length} completed tasks. Focus restored.`);
+        } else {
+            term.writeln('[SYSTEM]: No completed tasks to remove.');
+        }
+    } else {
+        const id = parseInt(args);
+        const index = state.tasks.findIndex(t => t.id === id);
+        if (index !== -1) {
+            saveStateSnapshot();
+            const task = state.tasks[index];
+            if (task.done) {
+                if (!task.completedAt) task.completedAt = Date.now();
+                state.archive.push(task);
+                if (state.archive.length > 100) state.archive = state.archive.slice(-100);
+            }
+            state.tasks.splice(index, 1);
+            reindexTasks();
+            saveTasks();
+            term.writeln(`[SYSTEM]: Task ${id} removed.`);
         } else {
             term.writeln(`[ERROR]: Task with ID ${args} does not exist.`);
         }
     }
-    else if (action === 'del') {
-        if (args === 'all') {
-            saveStateSnapshot();
-            state.tasks = [];
-            saveTasks();
-            term.writeln('[SYSTEM]: Cognitive matrix cleared.');
-        } else if (args === 'done') {
-            const completedTasks = state.tasks.filter(t => t.done);
-            if (completedTasks.length > 0) {
-                saveStateSnapshot();
-                // Archive tasks
-                completedTasks.forEach(t => {
-                    if (!t.completedAt) t.completedAt = Date.now();
-                    state.archive.push(t);
-                });
-                // Limit archive
-                if (state.archive.length > 100) state.archive = state.archive.slice(-100);
-                
-                state.tasks = state.tasks.filter(t => !t.done);
-                reindexTasks();
-                saveTasks();
-                term.writeln(`[SYSTEM]: Archived ${completedTasks.length} completed tasks. Focus restored.`);
-            } else {
-                term.writeln('[SYSTEM]: No completed tasks to remove.');
-            }
-        } else {
-            const id = parseInt(args);
-            const index = state.tasks.findIndex(t => t.id === id);
-            if (index !== -1) {
-                saveStateSnapshot();
-                const task = state.tasks[index];
-                if (task.done) {
-                    if (!task.completedAt) task.completedAt = Date.now();
-                    state.archive.push(task);
-                    if (state.archive.length > 100) state.archive = state.archive.slice(-100);
-                }
-                state.tasks.splice(index, 1);
-                reindexTasks();
-                saveTasks();
-                term.writeln(`[SYSTEM]: Task ${id} removed.`);
-            } else {
-                term.writeln(`[ERROR]: Task with ID ${args} does not exist.`);
-            }
-        }
-    }
-    else if (action === 'undo') {
-        if (state.previousTasks) {
-            state.tasks = JSON.parse(JSON.stringify(state.previousTasks));
-            state.previousTasks = null;
-            saveTasks();
-            term.writeln('[SYSTEM]: Time loop closed. Last change reverted.');
-        } else {
-            term.writeln('[SYSTEM]: Nowhere to return to.');
-        }
-    }
-    else if (action === 'focus') {
-        const focusArgs = args.split(' ').filter(a => a.length > 0);
-        const minutes = parseInt(focusArgs[0]);
-        
-        if (!isNaN(minutes) && minutes > 0) {
-            let taskName = "DEEP WORK"; 
-            if (focusArgs.length > 1) {
-                const id = parseInt(focusArgs[1]);
-                const task = state.tasks.find(t => t.id === id);
-                if (task) taskName = task.text;
-            } else {
-                const firstUnfinished = state.tasks.find(t => !t.done);
-                if (firstUnfinished) taskName = firstUnfinished.text;
-            }
-            startFocus(minutes, taskName);
-        } else {
-            term.writeln('[ERROR]: Specify minutes (e.g., focus 25).');
-        }
-    }
-    else if (action === 'stats') {
-        term.writeln('=== STATISTICS ===');
-        term.writeln(`Total completed tasks: ${state.totalCompleted}`);
-        term.writeln(`Currently in list:     ${state.tasks.length}`);
-    }
-    else if (action === 'theme') {
-        if (args) {
-            if (themes[args]) {
-                applyTheme(args);
-                term.writeln(`[SYSTEM]: Theme changed to "${args}".`);
-            } else {
-                term.writeln('[ERROR]: Unknown theme. Try "theme" to select one.');
-            }
-        } else {
-            startThemeSelection();
-        }
-    }
-    else if (action === 'sound') {
-        toggleSound(args, term);
-    }
-    else if (action === 'clear') {
-        term.clear();
-    }
-    else if (action === 'login') {
-        if (getCurrentUser()) {
-            term.writeln(`[SYSTEM]: Already logged in as ${getCurrentUser().email}`);
-        } else {
-            loginUser();
-        }
-    }
-    else if (action === 'logout') {
-        if (getCurrentUser()) {
-            logoutUser();
-        } else {
-            term.writeln('[SYSTEM]: Not logged in.');
-        }
-    }
-    else if (action === 'whoami') {
-        const user = getCurrentUser();
-        if (user) {
-            term.writeln(`Logged in as: ${user.email}`);
-            term.writeln(`UID: ${user.uid}`);
-        } else {
-            term.writeln('Guest (Local Mode)');
-        }
-    }
-    else if (action === 'review') {
-        const now = Date.now();
-        const past24h = now - (24 * 60 * 60 * 1000);
-        
-        const recentlyDone = [
-            ...state.tasks.filter(t => t.done && t.completedAt > past24h),
-            ...state.archive.filter(t => t.completedAt > past24h)
-        ];
+}
 
-        if (recentlyDone.length === 0) {
-            term.writeln('[SYSTEM]: No tasks completed in the last 24 hours. Get back to work.');
+function cmdUndo() {
+    if (state.previousTasks) {
+        state.tasks = JSON.parse(JSON.stringify(state.previousTasks));
+        state.previousTasks = null;
+        saveTasks();
+        term.writeln('[SYSTEM]: Time loop closed. Last change reverted.');
+    } else {
+        term.writeln('[SYSTEM]: Nowhere to return to.');
+    }
+}
+
+function cmdFocus(args) {
+    const focusArgs = args.split(' ').filter(a => a.length > 0);
+    const minutes = parseInt(focusArgs[0]);
+    
+    if (!isNaN(minutes) && minutes > 0) {
+        let taskName = "DEEP WORK"; 
+        if (focusArgs.length > 1) {
+            const id = parseInt(focusArgs[1]);
+            const task = state.tasks.find(t => t.id === id);
+            if (task) taskName = task.text;
         } else {
-            term.writeln('=== 24-HOUR RETROSPECTIVE ===');
-            recentlyDone.sort((a, b) => a.completedAt - b.completedAt).forEach(t => {
-                const date = new Date(t.completedAt);
-                const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                term.writeln(`[${time}] ✅ ${t.text}`);
-            });
-            term.writeln(`\r\n[SYSTEM]: Total: ${recentlyDone.length} achievements detected.`);
+            const firstUnfinished = state.tasks.find(t => !t.done);
+            if (firstUnfinished) taskName = firstUnfinished.text;
         }
+        startFocus(minutes, taskName);
+    } else {
+        term.writeln('[ERROR]: Specify minutes (e.g., focus 25).');
     }
-    else if (action === 'help') {
-        term.writeln('\r\n=== TASK MANAGEMENT ===');
-        term.writeln('  do [text]       - add task(s)');
-        term.writeln('  list            - show all tasks');
-        term.writeln('  done [id]       - complete task');
-        term.writeln('  del [id/all/done] - delete specific, all, or done');
-        term.writeln('  undo            - revert last change');
+}
 
-        term.writeln('\r\n=== FOCUS & VISUALS ===');
-        term.writeln('  focus [min]     - start Focus Mode (Matrix)');
-        term.writeln('  theme [name]    - change color scheme');
-        term.writeln('  sound [on/off]  - toggle sound effects');
+function cmdStats() {
+    term.writeln('=== STATISTICS ===');
+    term.writeln(`Total completed tasks: ${state.totalCompleted}`);
+    term.writeln(`Currently in list:     ${state.tasks.length}`);
+}
 
-        term.writeln('\r\n=== CLOUD & DATA ===');
-        term.writeln('  login           - sync with Google Cloud');
-        term.writeln('  logout          - disconnect from cloud');
-        term.writeln('  whoami          - show user info');
-
-        term.writeln('\r\n=== SYSTEM ===');
-        term.writeln('  stats           - show productivity stats');
-        term.writeln('  review          - last 24h achievements');
-        term.writeln('  clear           - clear screen');
-        term.writeln('  help            - show this menu');
+function cmdTheme(args) {
+    if (args) {
+        if (themes[args]) {
+            applyTheme(args);
+            term.writeln(`[SYSTEM]: Theme changed to "${args}".`);
+        } else {
+            term.writeln('[ERROR]: Unknown theme. Try "theme" to select one.');
+        }
+    } else {
+        startThemeSelection();
     }
-    else {
-        if (cmd.trim() !== '') {
+}
+
+function cmdSound(args) {
+    toggleSound(args, term);
+}
+
+function cmdClear() {
+    term.clear();
+}
+
+function cmdLogin() {
+    if (getCurrentUser()) {
+        term.writeln(`[SYSTEM]: Already logged in as ${getCurrentUser().email}`);
+    } else {
+        loginUser();
+    }
+}
+
+function cmdLogout() {
+    if (getCurrentUser()) {
+        logoutUser();
+    } else {
+        term.writeln('[SYSTEM]: Not logged in.');
+    }
+}
+
+function cmdWhoami() {
+    const user = getCurrentUser();
+    if (user) {
+        term.writeln(`Logged in as: ${user.email}`);
+        term.writeln(`UID: ${user.uid}`);
+    } else {
+        term.writeln('Guest (Local Mode)');
+    }
+}
+
+function cmdReview() {
+    const now = Date.now();
+    const past24h = now - (24 * 60 * 60 * 1000);
+    
+    const recentlyDone = [
+        ...state.tasks.filter(t => t.done && t.completedAt > past24h),
+        ...state.archive.filter(t => t.completedAt > past24h)
+    ];
+
+    if (recentlyDone.length === 0) {
+        term.writeln('[SYSTEM]: No tasks completed in the last 24 hours. Get back to work.');
+    } else {
+        term.writeln('=== 24-HOUR RETROSPECTIVE ===');
+        recentlyDone.sort((a, b) => a.completedAt - b.completedAt).forEach(t => {
+            const date = new Date(t.completedAt);
+            const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            term.writeln(`[${time}] ✅ ${t.text}`);
+        });
+        term.writeln(`\r\n[SYSTEM]: Total: ${recentlyDone.length} achievements detected.`);
+    }
+}
+
+function cmdHelp() {
+    term.writeln('\r\n=== TASK MANAGEMENT ===');
+    term.writeln('  do [text]       - add task(s)');
+    term.writeln('  list            - show all tasks');
+    term.writeln('  done [id]       - complete task');
+    term.writeln('  del [id/all/done] - delete specific, all, or done');
+    term.writeln('  undo            - revert last change');
+
+    term.writeln('\r\n=== FOCUS & VISUALS ===');
+    term.writeln('  focus [min]     - start Focus Mode (Matrix)');
+    term.writeln('  theme [name]    - change color scheme');
+    term.writeln('  sound [on/off]  - toggle sound effects');
+
+    term.writeln('\r\n=== CLOUD & DATA ===');
+    term.writeln('  login           - sync with Google Cloud');
+    term.writeln('  logout          - disconnect from cloud');
+    term.writeln('  whoami          - show user info');
+
+    term.writeln('\r\n=== SYSTEM ===');
+    term.writeln('  stats           - show productivity stats');
+    term.writeln('  review          - last 24h achievements');
+    term.writeln('  clear           - clear screen');
+    term.writeln('  help            - show this menu');
+}
+
+// --- COMMAND REGISTRY ---
+
+const commands = {
+    'do': cmdDo,
+    'list': cmdList,
+    'done': cmdDone,
+    'del': cmdDel,
+    'undo': cmdUndo,
+    'focus': cmdFocus,
+    'stats': cmdStats,
+    'theme': cmdTheme,
+    'sound': cmdSound,
+    'clear': cmdClear,
+    'login': cmdLogin,
+    'logout': cmdLogout,
+    'whoami': cmdWhoami,
+    'review': cmdReview,
+    'help': cmdHelp
+};
+
+export const availableCommands = Object.keys(commands);
+
+// --- MAIN HANDLER ---
+
+export function handleCommand(input) {
+    term.write('\r\n');
+    
+    const parts = input.trim().split(' ');
+    const action = parts[0].toLowerCase();
+    const args = parts.slice(1).join(' ');
+
+    if (commands[action]) {
+        commands[action](args);
+    } else {
+        if (input.trim() !== '') {
             term.writeln(`[ERROR]: Unknown command "${action}". Try "help".`);
         }
     }
 }
 
+// --- AUTOCOMPLETE ---
+
 export function handleAutocomplete(input, setInputCallback) {
     const parts = input.split(' ');
     
-    // 1. Doplnanie hlavnych prikazov
+    // 1. Command Autocomplete
     if (parts.length === 1 && input.length > 0) {
         const matches = availableCommands.filter(cmd => cmd.startsWith(input));
         
@@ -274,7 +315,7 @@ export function handleAutocomplete(input, setInputCallback) {
             term.write(`${state.prompt}${input}`);
         }
     } 
-    // 2. Doplnanie argumentov pre specificke prikazy
+    // 2. Argument Autocomplete
     else if (parts.length === 2) {
         const action = parts[0].toLowerCase();
         const argPrefix = parts[1].toLowerCase();
