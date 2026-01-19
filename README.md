@@ -1,78 +1,84 @@
 # The Zen Terminal v1.0
 
-Minimalistický správca úloh inšpirovaný retro terminálovou estetikou a filozofiou hlbokej práce (Deep Work). Aplikácia poskytuje "zenové" prostredie pre organizáciu myšlienok bez rušivých elementov.
+A minimalist task manager inspired by retro terminal aesthetics and the philosophy of Deep Work. The application provides a "zen" environment for organizing thoughts without distractions.
 
-## Funkcionalita
+## Functionality
 
-The Zen Terminal funguje ako webová simulácia príkazového riadku. Všetky interakcie prebiehajú prostredníctvom textových príkazov.
+The Zen Terminal operates as a web-based command-line simulation. All interactions take place via text commands.
 
-### Hlavné vlastnosti
+### Key Features
 
-*   **Autentický zážitok:** Postavené na knižnici `xterm.js` s retro vizuálom.
-*   **Focus Mód (Matrix):** Špeciálny režim sústredenia s efektom padajúcich znakov (Matrix dážď) a odpočítavaním času.
-*   **Vizuálne témy:** Možnosť prepínať medzi klasickou **Zelenou**, **Jantárovou** (Amber) a **Azúrovou** (Cyan) farbou.
-*   **História príkazov:** Listovanie v predchádzajúcich príkazoch pomocou šípok Hore/Dole.
-*   **Perzistencia dát:** Úlohy a nastavenia sa automaticky ukladajú do prehliadača (LocalStorage).
-*   **Hromadné akcie:** Podpora pridávania viacerých úloh naraz.
+*   **Authentic Experience:** Built on `xterm.js` with retro visuals.
+*   **Focus Mode (Matrix):** A special concentration mode featuring falling characters (Matrix rain effect) and a countdown timer.
+*   **Visual Themes:** Switch between classic **Green**, **Amber**, and **Cyan** color schemes.
+*   **Command History:** Navigate through previous commands using Up/Down arrows.
+*   **Data Persistence:** Tasks and settings are automatically saved in the browser (LocalStorage).
+*   **Batch Actions:** Support for adding multiple tasks at once.
 
-## Príkazy
+## Commands
 
-Na ovládanie aplikácie sú dostupné nasledujúce príkazy:
+The following commands are available to control the application:
 
-### Správa úloh
+### Task Management
 
 *   **`do [text]`**
-    *   Pridá novú úlohu.
-    *   Podporuje viac úloh naraz oddelených bodkočiarkou.
-    *   *Príklad:* `do Kúpiť mlieko; Vyniesť smeti`
+    *   Adds a new task.
+    *   Supports adding multiple tasks at once, separated by a semicolon.
+    *   *Example:* `do Buy milk; Take out trash`
 
 *   **`list`**
-    *   Zobrazí zoznam všetkých úloh.
+    *   Displays a list of all tasks.
 
 *   **`done [id]`**
-    *   Označí úlohu ako splnenú (uvoľní dopamín).
-    *   *Príklad:* `done 1`
+    *   Marks a task as completed (releases dopamine).
+    *   *Example:* `done 1`
 
-*   **`del [id]`** alebo **`del all`**
-    *   Vymaže konkrétnu úlohu alebo celý zoznam.
-    *   Zoznam sa po vymazaní automaticky prečísluje.
+*   **`del [id]`** or **`del all`**
+    *   Deletes a specific task or the entire list.
+    *   The list is automatically renumbered after deletion.
 
 *   **`undo`**
-    *   Vráti späť poslednú zmenu (záchrana pri omylom zmazanej úlohe).
+    *   Reverts the last change (a lifesaver for accidentally deleted tasks).
 
-### Produktivita & Vizuál
+### Productivity & Visuals
 
-*   **`focus [minúty] [voliteľné_id_úlohy]`**
-    *   Spustí režim hlbokého sústredenia.
-    *   Celá obrazovka sa prepne do **Matrix efektu**.
-    *   Ak zadáte ID úlohy (napr. `focus 25 3`), jej názov sa zobrazí nad časovačom.
-    *   Režim ukončíte stlačením klávesu **`q`** alebo **`Esc`**.
-    *   *Príklad:* `focus 25` (Pomodoro) alebo `focus 45 1` (Práca na úlohe č. 1)
+*   **`focus [minutes] [optional_task_id]`**
+    *   Starts Deep Work mode.
+    *   The entire screen switches to the **Matrix effect**.
+    *   If you provide a task ID (e.g., `focus 25 3`), its name will be displayed above the timer.
+    *   Exit the mode by pressing **`q`** or **`Esc`**.
+    *   *Example:* `focus 25` (Pomodoro) or `focus 45 1` (Work on task #1)
 
-*   **`theme [názov]`**
-    *   Zmení farebnú schému.
-    *   Ak napíšete len `theme`, spustí sa interaktívne menu (výber šípkami).
-    *   Dostupné farby: `green`, `amber`, `cyan`.
-    *   *Príklad:* `theme amber`
+*   **`theme [name]`**
+    *   Changes the color scheme.
+    *   Typing just `theme` launches an interactive menu (select with arrows).
+    *   Available colors: `green`, `amber`, `cyan`.
+    *   *Example:* `theme amber`
 
 *   **`sound [on/off]`**
-    *   Zapne alebo vypne zvukové efekty (písanie na klávesnici, splnenie úlohy).
-    *   *Príklad:* `sound on`
+    *   Toggles sound effects (typing sounds, task completion).
+    *   *Example:* `sound on`
 
 *   **`stats`**
-    *   Zobrazí celkový počet splnených úloh (dlhodobá štatistika).
+    *   Displays the total number of completed tasks (long-term statistics).
+    
+*   **`export`**
+    *   Exports your current data (tasks & settings) to a secure code string, automatically copied to your clipboard.
+    
+*   **`import [code]`**
+    *   Restores data from a previously generated export code.
 
-### Ostatné
+### Other
 
 *   **`clear`**
-    *   Vyčistí obrazovku terminálu.
+    *   Clears the terminal screen.
 
 *   **`help`**
-    *   Zobrazí rýchly prehľad príkazov.
+    *   Displays a quick overview of commands.
 
-## Klávesové skratky
+## Keyboard Shortcuts
 
-*   **Tab:** Automatické dopĺňanie príkazov (Autocomplete).
-*   **Šípka Hore / Dole:** Listovanie v histórii zadaných príkazov.
-*   **Šípky (v menu Theme):** Výber témy.
-*   **q / Esc:** Ukončenie Focus módu alebo výberu témy.
+*   **Tab:** Command autocomplete.
+*   **Arrow Up / Down:** Navigate command history.
+*   **Arrows (in Theme menu):** Select theme.
+*   **q / Esc:** Exit Focus mode or Theme selection.
