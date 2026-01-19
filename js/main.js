@@ -3,6 +3,7 @@ import { term, fitAddon } from './terminal.js';
 import { state } from './state.js';
 import { handleCommand, handleAutocomplete } from './commands.js';
 import { playKeySound } from './audio.js';
+import { initAuth } from './auth.js';
 import { 
     themeSelectionActive, 
     handleThemeInput, 
@@ -30,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize Modules
     initFocusModule(domElements);
+    initAuth(); // Start Firebase Auth listener
 
     // Mount Terminal
     term.open(domElements.terminalContainer);

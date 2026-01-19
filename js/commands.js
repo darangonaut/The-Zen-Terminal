@@ -4,11 +4,12 @@ import { state, saveTasks, saveStateSnapshot, reindexTasks, saveTotalCompleted }
 import { playSuccessSound, toggleSound } from './audio.js';
 import { applyTheme, themes, startThemeSelection } from './theme.js';
 import { startFocus } from './focus.js';
+import { loginUser, logoutUser, getCurrentUser } from './auth.js';
 
 export const availableCommands = [
     'do', 'list', 'done', 'del', 'undo', 'focus', 
     'stats', 'theme', 'sound', 'help', 'clear',
-    'export', 'import'
+    'export', 'import', 'login', 'logout', 'whoami'
 ];
 
 export function handleCommand(cmd) {
@@ -130,11 +131,9 @@ export function handleCommand(cmd) {
             version: '1.0'
         };
         try {
-            // Safe encoding of Unicode characters
             const json = JSON.stringify(dataToExport);
             const exportString = btoa(unescape(encodeURIComponent(json)));
             
-            // Function to print to terminal
             const printToTerminal = () => {
                 term.writeln('=== DATA EXPORT ===');
                 if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -148,7 +147,6 @@ export function handleCommand(cmd) {
                 term.writeln('To restore use: import [code]');
             };
 
-            // Attempt to copy
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(exportString)
                     .then(() => printToTerminal())
@@ -169,26 +167,21 @@ export function handleCommand(cmd) {
         }
         
         try {
-            // Remove whitespace
             const cleanArgs = args.replace(/\s+/g, '');
-            // Decode Unicode characters
             const jsonString = decodeURIComponent(escape(atob(cleanArgs)));
             const data = JSON.parse(jsonString);
 
             if (Array.isArray(data.tasks)) {
                 saveStateSnapshot();
-                
                 state.tasks = data.tasks;
                 if (data.totalCompleted) state.totalCompleted = data.totalCompleted;
                 if (data.theme && themes[data.theme]) {
                     state.currentTheme = data.theme;
                     applyTheme(data.theme);
                 }
-
                 saveTasks();
                 saveTotalCompleted();
                 reindexTasks();
-
                 term.writeln('[SYSTEM]: Data successfully restored.');
                 term.writeln(`[INFO]: Loaded ${state.tasks.length} tasks.`);
             } else {
@@ -197,6 +190,29 @@ export function handleCommand(cmd) {
         } catch (e) {
             term.writeln('[ERROR]: Failed to process import code.');
             term.writeln('Ensure you copied the entire code correctly.');
+        }
+    }
+    else if (action === 'login') {
+        if (getCurrentUser()) {
+            term.writeln(`[SYSTEM]: Already logged in as ${getCurrentUser().email}`);
+        } else {
+            loginUser();
+        }
+    }
+    else if (action === 'logout') {
+        if (getCurrentUser()) {
+            logoutUser();
+        } else {
+            term.writeln('[SYSTEM]: Not logged in.');
+        }
+    }
+    else if (action === 'whoami') {
+        const user = getCurrentUser();
+        if (user) {
+            term.writeln(`Logged in as: ${user.email}`);
+            term.writeln(`UID: ${user.uid}`);
+        } else {
+            term.writeln('Guest (Local Mode)');
         }
     }
     else if (action === 'help') {
@@ -210,6 +226,9 @@ export function handleCommand(cmd) {
         term.writeln('sound [on/off]  - toggle sound');
         term.writeln('export          - export data');
         term.writeln('import [code]   - import data');
+        term.writeln('login           - sync with cloud');
+        term.writeln('logout          - disconnect cloud');
+        term.writeln('whoami          - show user info');
         term.writeln('clear           - clear screen');
     }
     else {
