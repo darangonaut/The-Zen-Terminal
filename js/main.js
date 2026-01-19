@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     term.writeln(' v1.0');
     term.writeln('');
     term.writeln('Type "help" for a list of commands.');
-    term.write('\r\n> ');
+    term.write(`\r\n${state.prompt}`);
 
     // Local state for input handling
     let input = '';
@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 handleCommand(input);
                 input = '';
                 // Check active modes again before printing prompt
-                if (!isFocusActive() && !themeSelectionActive) term.write('\r\n> ');
+                if (!isFocusActive() && !themeSelectionActive) term.write(`\r\n${state.prompt}`);
                 break;
             case '\u007F': // Backspace
                 playKeySound();

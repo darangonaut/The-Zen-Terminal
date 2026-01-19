@@ -2,7 +2,7 @@ import { auth, provider, db } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { term } from './terminal.js';
-import { state, loadTasksFromCloud, setCloudSaver } from './state.js';
+import { state, loadTasksFromCloud, setCloudSaver, updatePrompt } from './state.js';
 import { applyTheme } from './theme.js';
 
 let currentUser = null;
@@ -14,6 +14,7 @@ setCloudSaver(() => {
 
 export function initAuth() {
     onAuthStateChanged(auth, async (user) => {
+        updatePrompt(user);
         if (user) {
             currentUser = user;
         } else {
@@ -32,8 +33,10 @@ export async function loginUser() {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
         currentUser = user;
+        updatePrompt(user);
         term.writeln(`[SYSTEM]: Authentication successful. Identity: ${user.email}`);
         await loadUserData(user);
+        term.write(`\r\n${state.prompt}`);
     } catch (error) {
         term.writeln(`[ERROR]: Login failed. ${error.message}`);
     }
@@ -43,6 +46,7 @@ export async function logoutUser() {
     try {
         await signOut(auth);
         currentUser = null;
+        updatePrompt(null);
         term.writeln('[SYSTEM]: Disconnected from cloud. Returning to local mode.');
     } catch (error) {
         term.writeln(`[ERROR]: Logout failed. ${error.message}`);

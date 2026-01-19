@@ -260,7 +260,7 @@ export function handleAutocomplete(input, setInputCallback) {
             setInputCallback(newInput);
         } else if (matches.length > 1) {
             term.writeln('\r\n' + matches.join('  '));
-            term.write('> ' + input);
+            term.write(`${state.prompt}${input}`);
         }
     }
 }

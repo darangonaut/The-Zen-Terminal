@@ -74,9 +74,9 @@ export function stopFocus(finished = false) {
         playSuccessSound();
         term.writeln('[SYSTEM]: Cas vyprsal. Dobra praca.');
     } else {
-        term.writeln('[SYSTEM]: Focus mode preruseny.');
+        term.writeln('[SYSTEM]: Focus mode interrupted.');
     }
-    term.write('\r\n> ');
+    term.write(`\r\n${state.prompt}`);
 }
 
 // MATRIX LOGIC

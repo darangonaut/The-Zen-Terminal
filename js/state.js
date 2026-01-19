@@ -2,6 +2,10 @@
 
 let cloudSaver = null; // Callback for cloud saving
 
+// Optimistic Prompt Initialization
+const cachedEmail = localStorage.getItem('zen_user_email');
+const initialPrompt = cachedEmail ? `${cachedEmail.split('@')[0]}@zen > ` : '> ';
+
 export const state = {
     tasks: JSON.parse(localStorage.getItem('tasks')) || [],
     previousTasks: null,
@@ -9,8 +13,20 @@ export const state = {
     historyIndex: 0,
     totalCompleted: parseInt(localStorage.getItem('zen_total_completed')) || 0,
     currentTheme: localStorage.getItem('zen_theme') || 'green',
-    soundEnabled: localStorage.getItem('zen_sound') === 'true'
+    soundEnabled: localStorage.getItem('zen_sound') === 'true',
+    prompt: initialPrompt
 };
+
+export function updatePrompt(user) {
+    if (user) {
+        localStorage.setItem('zen_user_email', user.email);
+        const name = user.email.split('@')[0];
+        state.prompt = `${name}@zen > `;
+    } else {
+        localStorage.removeItem('zen_user_email');
+        state.prompt = '> ';
+    }
+}
 
 export function setCloudSaver(fn) {
     cloudSaver = fn;

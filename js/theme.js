@@ -51,10 +51,10 @@ export function handleThemeInput(e) {
         applyTheme(themeList[themeSelectionIndex]);
         themeSelectionActive = false;
         term.writeln(`\r\n[SYSTEM]: Theme changed to "${themeList[themeSelectionIndex]}".`);
-        term.write('\r\n> ');
+        term.write(`\r\n${state.prompt}`);
     } else if (e === 'q' || e === 'Q' || e === '\u001b') { // q/Esc
         themeSelectionActive = false;
         term.writeln('\r\n[SYSTEM]: Theme change cancelled.');
-        term.write('\r\n> ');
+        term.write(`\r\n${state.prompt}`);
     }
 }
