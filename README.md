@@ -67,6 +67,11 @@ The following commands are available to control the application:
 *   **`stats`**
     *   Displays the total number of completed tasks (long-term statistics).
 
+*   **`review`**
+    *   Provides a 24-hour retrospective.
+    *   Shows all tasks completed in the last 24 hours, even if they were archived via `del done`.
+    *   *Example:* `review`
+
 ### Cloud & Data
 
 *   **`login`**

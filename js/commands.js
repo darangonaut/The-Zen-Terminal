@@ -9,7 +9,7 @@ import { loginUser, logoutUser, getCurrentUser } from './auth.js';
 export const availableCommands = [
     'do', 'list', 'done', 'del', 'undo', 'focus', 
     'stats', 'theme', 'sound', 'help', 'clear',
-    'login', 'logout', 'whoami'
+    'login', 'logout', 'whoami', 'review'
 ];
 
 export function handleCommand(cmd) {
@@ -74,6 +74,7 @@ export function handleCommand(cmd) {
         if (task) {
             saveStateSnapshot();
             task.done = true;
+            task.completedAt = Date.now();
             state.totalCompleted++;
             saveTotalCompleted();
             saveTasks();
@@ -90,13 +91,21 @@ export function handleCommand(cmd) {
             saveTasks();
             term.writeln('[SYSTEM]: Cognitive matrix cleared.');
         } else if (args === 'done') {
-            const completedCount = state.tasks.filter(t => t.done).length;
-            if (completedCount > 0) {
+            const completedTasks = state.tasks.filter(t => t.done);
+            if (completedTasks.length > 0) {
                 saveStateSnapshot();
+                // Archive tasks
+                completedTasks.forEach(t => {
+                    if (!t.completedAt) t.completedAt = Date.now();
+                    state.archive.push(t);
+                });
+                // Limit archive
+                if (state.archive.length > 100) state.archive = state.archive.slice(-100);
+                
                 state.tasks = state.tasks.filter(t => !t.done);
                 reindexTasks();
                 saveTasks();
-                term.writeln(`[SYSTEM]: Removed ${completedCount} completed tasks. Focus restored.`);
+                term.writeln(`[SYSTEM]: Archived ${completedTasks.length} completed tasks. Focus restored.`);
             } else {
                 term.writeln('[SYSTEM]: No completed tasks to remove.');
             }
@@ -105,6 +114,12 @@ export function handleCommand(cmd) {
             const index = state.tasks.findIndex(t => t.id === id);
             if (index !== -1) {
                 saveStateSnapshot();
+                const task = state.tasks[index];
+                if (task.done) {
+                    if (!task.completedAt) task.completedAt = Date.now();
+                    state.archive.push(task);
+                    if (state.archive.length > 100) state.archive = state.archive.slice(-100);
+                }
                 state.tasks.splice(index, 1);
                 reindexTasks();
                 saveTasks();
@@ -189,6 +204,27 @@ export function handleCommand(cmd) {
             term.writeln('Guest (Local Mode)');
         }
     }
+    else if (action === 'review') {
+        const now = Date.now();
+        const past24h = now - (24 * 60 * 60 * 1000);
+        
+        const recentlyDone = [
+            ...state.tasks.filter(t => t.done && t.completedAt > past24h),
+            ...state.archive.filter(t => t.completedAt > past24h)
+        ];
+
+        if (recentlyDone.length === 0) {
+            term.writeln('[SYSTEM]: No tasks completed in the last 24 hours. Get back to work.');
+        } else {
+            term.writeln('=== 24-HOUR RETROSPECTIVE ===');
+            recentlyDone.sort((a, b) => a.completedAt - b.completedAt).forEach(t => {
+                const date = new Date(t.completedAt);
+                const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                term.writeln(`[${time}] ✅ ${t.text}`);
+            });
+            term.writeln(`\r\n[SYSTEM]: Total: ${recentlyDone.length} achievements detected.`);
+        }
+    }
     else if (action === 'help') {
         term.writeln('\r\n=== TASK MANAGEMENT ===');
         term.writeln('  do [text]       - add task(s)');
@@ -209,6 +245,7 @@ export function handleCommand(cmd) {
 
         term.writeln('\r\n=== SYSTEM ===');
         term.writeln('  stats           - show productivity stats');
+        term.writeln('  review          - last 24h achievements');
         term.writeln('  clear           - clear screen');
         term.writeln('  help            - show this menu');
     }

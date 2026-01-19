@@ -78,6 +78,7 @@ export async function saveUserData(user) {
     try {
         await setDoc(doc(db, "users", user.uid), {
             tasks: state.tasks,
+            archive: state.archive,
             theme: state.currentTheme,
             totalCompleted: state.totalCompleted,
             commandHistory: state.commandHistory,

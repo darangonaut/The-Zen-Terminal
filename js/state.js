@@ -9,6 +9,7 @@ const initialPrompt = cachedEmail ? `${cachedEmail.split('@')[0]}@zen > ` : '> '
 export const state = {
     tasks: JSON.parse(localStorage.getItem('tasks')) || [],
     previousTasks: null,
+    archive: JSON.parse(localStorage.getItem('zen_archive')) || [],
     commandHistory: JSON.parse(localStorage.getItem('zen_command_history')) || [],
     historyIndex: 0, // Will be set correctly below
     totalCompleted: parseInt(localStorage.getItem('zen_total_completed')) || 0,
@@ -51,6 +52,7 @@ export function addToHistory(cmd) {
 
 export function loadTasksFromCloud(data) {
     if (data.tasks) state.tasks = data.tasks;
+    if (data.archive) state.archive = data.archive;
     if (data.totalCompleted) state.totalCompleted = data.totalCompleted;
     if (data.theme) state.currentTheme = data.theme;
     if (data.commandHistory && Array.isArray(data.commandHistory)) {
@@ -62,10 +64,12 @@ export function loadTasksFromCloud(data) {
     
     // Ulozit aj do lokalneho storage ako zalohu/cache
     localStorage.setItem('tasks', JSON.stringify(state.tasks));
+    localStorage.setItem('zen_archive', JSON.stringify(state.archive));
     localStorage.setItem('zen_total_completed', state.totalCompleted);
 }
 export function saveTasks() {
     localStorage.setItem('tasks', JSON.stringify(state.tasks));
+    localStorage.setItem('zen_archive', JSON.stringify(state.archive));
     if (cloudSaver) cloudSaver();
 }
 
