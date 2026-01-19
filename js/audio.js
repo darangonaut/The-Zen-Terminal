@@ -64,14 +64,14 @@ export function toggleSound(args, term) {
     if (args === 'on') {
         state.soundEnabled = true;
         localStorage.setItem('zen_sound', 'true');
-        term.writeln('[SYSTEM]: Audio modul aktivovany.');
+        term.writeln('[SYSTEM]: Audio module activated.');
         playSuccessSound();
     } else if (args === 'off') {
         state.soundEnabled = false;
         localStorage.setItem('zen_sound', 'false');
-        term.writeln('[SYSTEM]: Audio modul deaktivovany (tichy rezim).');
+        term.writeln('[SYSTEM]: Audio module deactivated (silent mode).');
     } else {
-        term.writeln(`[SYSTEM]: Zvuk je aktualne ${state.soundEnabled ? 'ZAPNUTY' : 'VYPNUTY'}.`);
-        term.writeln('Pouzite "sound on" alebo "sound off".');
+        term.writeln(`[SYSTEM]: Sound is currently ${state.soundEnabled ? 'ON' : 'OFF'}.`);
+        term.writeln('Use "sound on" or "sound off".');
     }
 }

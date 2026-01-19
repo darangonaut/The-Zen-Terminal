@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
     term.writeln('');
     term.writeln(' v1.0');
     term.writeln('');
-    term.writeln('Zadaj "help" pre zoznam prikazov.');
+    term.writeln('Type "help" for a list of commands.');
     term.write('\r\n> ');
 
     // Local state for input handling

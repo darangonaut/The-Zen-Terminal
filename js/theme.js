@@ -27,8 +27,8 @@ export function startThemeSelection() {
     themeSelectionIndex = themeList.indexOf(state.currentTheme);
     if (themeSelectionIndex === -1) themeSelectionIndex = 0;
     
-    term.writeln('=== VYBER TEMY ===');
-    term.writeln('Sipky pre vyber, ENTER pre potvrdenie.');
+    term.writeln('=== THEME SELECTION ===');
+    term.writeln('Use Arrows to select, ENTER to confirm.');
     renderThemeSelection();
 }
 
@@ -50,11 +50,11 @@ export function handleThemeInput(e) {
     } else if (e === '\r') { // Enter
         applyTheme(themeList[themeSelectionIndex]);
         themeSelectionActive = false;
-        term.writeln(`\r\n[SYSTEM]: Tema zmenena na "${themeList[themeSelectionIndex]}".`);
+        term.writeln(`\r\n[SYSTEM]: Theme changed to "${themeList[themeSelectionIndex]}".`);
         term.write('\r\n> ');
     } else if (e === 'q' || e === 'Q' || e === '\u001b') { // q/Esc
         themeSelectionActive = false;
-        term.writeln('\r\n[SYSTEM]: Zmena temy zrusena.');
+        term.writeln('\r\n[SYSTEM]: Theme change cancelled.');
         term.write('\r\n> ');
     }
 }

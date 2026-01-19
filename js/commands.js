@@ -23,16 +23,16 @@ export function handleCommand(cmd) {
             saveStateSnapshot();
             newTasks.forEach(taskText => {
                 state.tasks.push({ id: state.tasks.length + 1, text: taskText, done: false });
-                term.writeln(`[SYSTEM]: Uloha "${taskText}" bola pridana do kognitivnej matice.`);
+                term.writeln(`[SYSTEM]: Task "${taskText}" added to the cognitive matrix.`);
             });
             saveTasks();
             reindexTasks();
         } else {
-             term.writeln(`[CHYBA]: Nezadali ste ziadny text ulohy.`);
+             term.writeln(`[ERROR]: You didn't enter any task text.`);
         }
     }
     else if (action === 'list') {
-        if (state.tasks.length === 0) term.writeln('[SYSTEM]: Prazdnota. Ziadne ulohy.');
+        if (state.tasks.length === 0) term.writeln('[SYSTEM]: Void. No tasks available.');
         state.tasks.forEach(t => term.writeln(`${t.id}. [${t.done ? 'X' : ' '}] ${t.text}`));
     }
     else if (action === 'done') {
@@ -45,9 +45,9 @@ export function handleCommand(cmd) {
             saveTotalCompleted();
             saveTasks();
             playSuccessSound();
-            term.writeln('[SYSTEM]: Dopamin uvolneny. Uloha splnena.');
+            term.writeln('[SYSTEM]: Dopamine released. Task completed.');
         } else {
-            term.writeln(`[CHYBA]: Uloha s ID ${args} neexistuje.`);
+            term.writeln(`[ERROR]: Task with ID ${args} does not exist.`);
         }
     }
     else if (action === 'del') {
@@ -55,7 +55,7 @@ export function handleCommand(cmd) {
             saveStateSnapshot();
             state.tasks = [];
             saveTasks();
-            term.writeln('[SYSTEM]: Kognitivna matica bola vycistena.');
+            term.writeln('[SYSTEM]: Cognitive matrix cleared.');
         } else {
             const id = parseInt(args);
             const index = state.tasks.findIndex(t => t.id === id);
@@ -64,9 +64,9 @@ export function handleCommand(cmd) {
                 state.tasks.splice(index, 1);
                 reindexTasks();
                 saveTasks();
-                term.writeln(`[SYSTEM]: Uloha ${id} bola odstranena.`);
+                term.writeln(`[SYSTEM]: Task ${id} removed.`);
             } else {
-                term.writeln(`[CHYBA]: Uloha s ID ${args} neexistuje.`);
+                term.writeln(`[ERROR]: Task with ID ${args} does not exist.`);
             }
         }
     }
@@ -75,9 +75,9 @@ export function handleCommand(cmd) {
             state.tasks = JSON.parse(JSON.stringify(state.previousTasks));
             state.previousTasks = null;
             saveTasks();
-            term.writeln('[SYSTEM]: Casova slucka uzavreta. Posledna zmena bola vratena.');
+            term.writeln('[SYSTEM]: Time loop closed. Last change reverted.');
         } else {
-            term.writeln('[SYSTEM]: Niet sa kam vratit.');
+            term.writeln('[SYSTEM]: Nowhere to return to.');
         }
     }
     else if (action === 'focus') {
@@ -85,7 +85,7 @@ export function handleCommand(cmd) {
         const minutes = parseInt(focusArgs[0]);
         
         if (!isNaN(minutes) && minutes > 0) {
-            let taskName = "HLBOKÁ PRÁCA"; 
+            let taskName = "DEEP WORK"; 
             if (focusArgs.length > 1) {
                 const id = parseInt(focusArgs[1]);
                 const task = state.tasks.find(t => t.id === id);
@@ -96,21 +96,21 @@ export function handleCommand(cmd) {
             }
             startFocus(minutes, taskName);
         } else {
-            term.writeln('[CHYBA]: Zadajte pocet minut. (napr. focus 25)');
+            term.writeln('[ERROR]: Specify minutes (e.g., focus 25).');
         }
     }
     else if (action === 'stats') {
-        term.writeln('=== STATISTIKA ===');
-        term.writeln(`Celkovo splnenych uloh: ${state.totalCompleted}`);
-        term.writeln(`Aktualne v zozname:     ${state.tasks.length}`);
+        term.writeln('=== STATISTICS ===');
+        term.writeln(`Total completed tasks: ${state.totalCompleted}`);
+        term.writeln(`Currently in list:     ${state.tasks.length}`);
     }
     else if (action === 'theme') {
         if (args) {
             if (themes[args]) {
                 applyTheme(args);
-                term.writeln(`[SYSTEM]: Tema zmenena na "${args}".`);
+                term.writeln(`[SYSTEM]: Theme changed to "${args}".`);
             } else {
-                term.writeln('[CHYBA]: Neznama tema. Skuste len "theme" pre vyber.');
+                term.writeln('[ERROR]: Unknown theme. Try "theme" to select one.');
             }
         } else {
             startThemeSelection();
@@ -130,25 +130,25 @@ export function handleCommand(cmd) {
             version: '1.0'
         };
         try {
-            // Bezpecne kodovanie Unicode znakov (diakritiky) pre Base64
+            // Safe encoding of Unicode characters
             const json = JSON.stringify(dataToExport);
             const exportString = btoa(unescape(encodeURIComponent(json)));
             
-            // Funkcia pre vypis do terminalu (pouzita v oboch pripadoch)
+            // Function to print to terminal
             const printToTerminal = () => {
-                term.writeln('=== EXPORT DAT ===');
+                term.writeln('=== DATA EXPORT ===');
                 if (navigator.clipboard && navigator.clipboard.writeText) {
-                    term.writeln('[SYSTEM]: Kod bol skopirovany do schranky.');
+                    term.writeln('[SYSTEM]: Code automatically copied to clipboard.');
                 } else {
-                    term.writeln('Skopirujte nasledujuci kod:');
+                    term.writeln('Copy the following code:');
                 }
                 term.writeln('');
                 term.writeln(exportString);
                 term.writeln('');
-                term.writeln('Pre obnovenie pouzite: import [kod]');
+                term.writeln('To restore use: import [code]');
             };
 
-            // Pokus o kopirovanie
+            // Attempt to copy
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(exportString)
                     .then(() => printToTerminal())
@@ -158,20 +158,20 @@ export function handleCommand(cmd) {
             }
 
         } catch (e) {
-            console.error(e); // Pre debugovanie v konzole
-            term.writeln('[CHYBA]: Export zlyhal (pravdepodobne problem s kódovaním znakov).');
+            console.error(e);
+            term.writeln('[ERROR]: Export failed (encoding issue).');
         }
     }
     else if (action === 'import') {
         if (!args) {
-            term.writeln('[CHYBA]: Chyba importovaci kod. Pouzitie: import [kod]');
+            term.writeln('[ERROR]: Missing import code. Usage: import [code]');
             return;
         }
         
         try {
-            // Odstranenie bielych znakov
+            // Remove whitespace
             const cleanArgs = args.replace(/\s+/g, '');
-            // Dekodovanie Unicode znakov z Base64
+            // Decode Unicode characters
             const jsonString = decodeURIComponent(escape(atob(cleanArgs)));
             const data = JSON.parse(jsonString);
 
@@ -189,32 +189,32 @@ export function handleCommand(cmd) {
                 saveTotalCompleted();
                 reindexTasks();
 
-                term.writeln('[SYSTEM]: Data uspesne obnovene z importu.');
-                term.writeln(`[INFO]: Nacitanych ${state.tasks.length} uloh.`);
+                term.writeln('[SYSTEM]: Data successfully restored.');
+                term.writeln(`[INFO]: Loaded ${state.tasks.length} tasks.`);
             } else {
-                throw new Error('Neplatna struktura dat');
+                throw new Error('Invalid data structure');
             }
         } catch (e) {
-            term.writeln('[CHYBA]: Nepodarilo sa spracovat importovaci kod.');
-            term.writeln('Uistite sa, ze ste skopirovali cely kod spravne.');
+            term.writeln('[ERROR]: Failed to process import code.');
+            term.writeln('Ensure you copied the entire code correctly.');
         }
     }
     else if (action === 'help') {
-        term.writeln('do [text]       - pridat ulohu');
-        term.writeln('list            - zobrazit vsetko');
-        term.writeln('done [id]       - splnit ulohu');
-        term.writeln('del [id/all]    - vymazat ulohu/vsetko');
-        term.writeln('undo            - vratit zmenu');
-        term.writeln('focus [min] [id]- Focus mod (Matrix)');
-        term.writeln('theme [nazov]   - zmena farby');
-        term.writeln('sound [on/off]  - zapnut/vypnut zvuky');
-        term.writeln('export          - exportovat data');
-        term.writeln('import [kod]    - importovat data');
-        term.writeln('clear           - vycistit');
+        term.writeln('do [text]       - add task');
+        term.writeln('list            - show all');
+        term.writeln('done [id]       - complete task');
+        term.writeln('del [id/all]    - delete task/all');
+        term.writeln('undo            - revert change');
+        term.writeln('focus [min] [id]- Focus mode (Matrix)');
+        term.writeln('theme [name]    - change color');
+        term.writeln('sound [on/off]  - toggle sound');
+        term.writeln('export          - export data');
+        term.writeln('import [code]   - import data');
+        term.writeln('clear           - clear screen');
     }
     else {
         if (cmd.trim() !== '') {
-            term.writeln(`[CHYBA]: Prikaz "${action}" nepoznam. Skuste "help".`);
+            term.writeln(`[ERROR]: Unknown command "${action}". Try "help".`);
         }
     }
 }
