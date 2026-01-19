@@ -33,8 +33,40 @@ export function handleCommand(cmd) {
         }
     }
     else if (action === 'list') {
-        if (state.tasks.length === 0) term.writeln('[SYSTEM]: Void. No tasks available.');
-        state.tasks.forEach(t => term.writeln(`${t.id}. [${t.done ? 'X' : ' '}] ${t.text}`));
+        if (state.tasks.length === 0) {
+            term.writeln('[SYSTEM]: Void. No tasks available.');
+            return;
+        }
+
+        if (args === 'tags') {
+            // Extract unique tags
+            const tags = new Set();
+            state.tasks.forEach(t => {
+                const found = t.text.match(/@\w+/g);
+                if (found) found.forEach(tag => tags.add(tag));
+            });
+            
+            if (tags.size === 0) {
+                term.writeln('[SYSTEM]: No tags found used in tasks.');
+            } else {
+                term.writeln('=== ACTIVE TAGS ===');
+                tags.forEach(tag => term.writeln(tag));
+            }
+        } 
+        else if (args.startsWith('@')) {
+            // Filter by tag
+            const filtered = state.tasks.filter(t => t.text.includes(args));
+            if (filtered.length === 0) {
+                term.writeln(`[SYSTEM]: No tasks found with tag ${args}`);
+            } else {
+                term.writeln(`=== TASKS [${args}] ===`);
+                filtered.forEach(t => term.writeln(`${t.id}. [${t.done ? 'X' : ' '}] ${t.text}`));
+            }
+        }
+        else {
+            // Show all
+            state.tasks.forEach(t => term.writeln(`${t.id}. [${t.done ? 'X' : ' '}] ${t.text}`));
+        }
     }
     else if (action === 'done') {
         const id = parseInt(args);
@@ -217,6 +249,14 @@ export function handleAutocomplete(input, setInputCallback) {
             subMatches = ['on', 'off'].filter(s => s.startsWith(argPrefix));
         } else if (action === 'theme') {
             subMatches = Object.keys(themes).filter(s => s.startsWith(argPrefix));
+        } else if (action === 'list') {
+            // Get unique tags from tasks
+            const tags = new Set(['tags']);
+            state.tasks.forEach(t => {
+                const found = t.text.match(/@\w+/g);
+                if (found) found.forEach(tag => tags.add(tag));
+            });
+            subMatches = Array.from(tags).filter(s => s.startsWith(argPrefix));
         }
 
         if (subMatches.length === 1) {

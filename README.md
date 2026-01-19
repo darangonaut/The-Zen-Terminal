@@ -15,6 +15,7 @@ The Zen Terminal operates as a web-based command-line simulation. All interactio
 *   **Command History:** Navigate through previous commands using Up/Down arrows.
 *   **Data Persistence:** Automatic local saving (LocalStorage) with optional Cloud backup.
 *   **Batch Actions:** Support for adding multiple tasks at once.
+*   **Tagging System:** Organize tasks with `@tags` and filter them easily.
 
 ## Commands
 
@@ -22,20 +23,23 @@ The following commands are available to control the application:
 
 ### Task Management
 
-*   **`do [text]`**
+*   **`do [text] [@tag]`**
     *   Adds a new task.
+    *   Supports tags for organization (e.g., `@work`, `@home`).
     *   Supports adding multiple tasks at once, separated by a semicolon.
-    *   *Example:* `do Buy milk; Take out trash`
+    *   *Example:* `do Buy milk @home; Finish report @work`
 
 *   **`list`**
     *   Displays a list of all tasks.
+    *   **`list @tag`**: Filters tasks by a specific tag.
+    *   **`list tags`**: Shows a list of all currently active tags.
 
 *   **`done [id]`**
     *   Marks a task as completed (releases dopamine).
     *   *Example:* `done 1`
 
-*   **`del [id]`** or **`del all`**
-    *   Deletes a specific task or the entire list.
+*   **`del [id]`**, **`del all`** or **`del done`**
+    *   Deletes a specific task, the entire list, or **only completed tasks**.
     *   The list is automatically renumbered after deletion.
 
 *   **`undo`**
@@ -84,7 +88,7 @@ The following commands are available to control the application:
 
 ## Keyboard Shortcuts
 
-*   **Tab:** Command autocomplete.
+*   **Tab:** Command autocomplete (supports commands, tags, and arguments).
 *   **Arrow Up / Down:** Navigate command history.
 *   **Arrows (in Theme menu):** Select theme.
 *   **q / Esc:** Exit Focus mode or Theme selection.
