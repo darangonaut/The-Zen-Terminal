@@ -80,6 +80,7 @@ export async function saveUserData(user) {
             tasks: state.tasks,
             theme: state.currentTheme,
             totalCompleted: state.totalCompleted,
+            commandHistory: state.commandHistory,
             lastUpdated: new Date()
         });
     } catch (error) {

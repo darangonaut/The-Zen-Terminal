@@ -1,6 +1,6 @@
 // MAIN ENTRY POINT
 import { term, fitAddon } from './terminal.js';
-import { state } from './state.js';
+import { state, addToHistory } from './state.js';
 import { handleCommand, handleAutocomplete } from './commands.js';
 import { playKeySound } from './audio.js';
 import { initAuth } from './auth.js';
@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Mount Terminal
     term.open(domElements.terminalContainer);
     fitAddon.fit();
+    term.focus(); // Auto-focus on load
 
     // Initial Setup
     if (themes[state.currentTheme]) {
@@ -115,8 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
             case '\r': // Enter
                 playKeySound();
                 if (input.trim().length > 0) {
-                    state.commandHistory.push(input);
-                    state.historyIndex = state.commandHistory.length;
+                    addToHistory(input);
                 }
                 handleCommand(input);
                 input = '';

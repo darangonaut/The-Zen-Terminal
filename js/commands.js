@@ -9,7 +9,7 @@ import { loginUser, logoutUser, getCurrentUser } from './auth.js';
 export const availableCommands = [
     'do', 'list', 'done', 'del', 'undo', 'focus', 
     'stats', 'theme', 'sound', 'help', 'clear',
-    'export', 'import', 'login', 'logout', 'whoami'
+    'login', 'logout', 'whoami'
 ];
 
 export function handleCommand(cmd) {
@@ -123,75 +123,6 @@ export function handleCommand(cmd) {
     else if (action === 'clear') {
         term.clear();
     }
-    else if (action === 'export') {
-        const dataToExport = {
-            tasks: state.tasks,
-            theme: state.currentTheme,
-            totalCompleted: state.totalCompleted,
-            version: '1.0'
-        };
-        try {
-            const json = JSON.stringify(dataToExport);
-            const exportString = btoa(unescape(encodeURIComponent(json)));
-            
-            const printToTerminal = () => {
-                term.writeln('=== DATA EXPORT ===');
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    term.writeln('[SYSTEM]: Code automatically copied to clipboard.');
-                } else {
-                    term.writeln('Copy the following code:');
-                }
-                term.writeln('');
-                term.writeln(exportString);
-                term.writeln('');
-                term.writeln('To restore use: import [code]');
-            };
-
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(exportString)
-                    .then(() => printToTerminal())
-                    .catch(() => printToTerminal());
-            } else {
-                printToTerminal();
-            }
-
-        } catch (e) {
-            console.error(e);
-            term.writeln('[ERROR]: Export failed (encoding issue).');
-        }
-    }
-    else if (action === 'import') {
-        if (!args) {
-            term.writeln('[ERROR]: Missing import code. Usage: import [code]');
-            return;
-        }
-        
-        try {
-            const cleanArgs = args.replace(/\s+/g, '');
-            const jsonString = decodeURIComponent(escape(atob(cleanArgs)));
-            const data = JSON.parse(jsonString);
-
-            if (Array.isArray(data.tasks)) {
-                saveStateSnapshot();
-                state.tasks = data.tasks;
-                if (data.totalCompleted) state.totalCompleted = data.totalCompleted;
-                if (data.theme && themes[data.theme]) {
-                    state.currentTheme = data.theme;
-                    applyTheme(data.theme);
-                }
-                saveTasks();
-                saveTotalCompleted();
-                reindexTasks();
-                term.writeln('[SYSTEM]: Data successfully restored.');
-                term.writeln(`[INFO]: Loaded ${state.tasks.length} tasks.`);
-            } else {
-                throw new Error('Invalid data structure');
-            }
-        } catch (e) {
-            term.writeln('[ERROR]: Failed to process import code.');
-            term.writeln('Ensure you copied the entire code correctly.');
-        }
-    }
     else if (action === 'login') {
         if (getCurrentUser()) {
             term.writeln(`[SYSTEM]: Already logged in as ${getCurrentUser().email}`);
@@ -231,8 +162,6 @@ export function handleCommand(cmd) {
         term.writeln('\r\n=== CLOUD & DATA ===');
         term.writeln('  login           - sync with Google Cloud');
         term.writeln('  logout          - disconnect from cloud');
-        term.writeln('  export          - export data to clipboard');
-        term.writeln('  import [code]   - restore data from code');
         term.writeln('  whoami          - show user info');
 
         term.writeln('\r\n=== SYSTEM ===');

@@ -74,12 +74,6 @@ The following commands are available to control the application:
 *   **`whoami`**
     *   Displays information about the currently logged-in user.
 
-*   **`export`**
-    *   Exports your current data to a secure code string, automatically copied to your clipboard.
-    
-*   **`import [code]`**
-    *   Restores data from a previously generated export code.
-
 ### Other
 
 *   **`clear`**
