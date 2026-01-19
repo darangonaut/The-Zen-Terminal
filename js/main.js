@@ -67,11 +67,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Tab') {
             e.preventDefault();
         }
-        // Handle Focus Mode Exit
+        
+        // Handle Focus Mode Exit (Global listener because terminal is hidden)
         if (isFocusActive()) {
-            handleFocusInput(e.key);
+            if (e.key === 'q' || e.key === 'Q' || e.key === 'Escape') {
+                e.preventDefault();
+                e.stopImmediatePropagation(); // Zastav vsetky ostatne listenery
+                handleFocusInput(e.key);
+            }
         }
-    }, { capture: true });
+    }, { capture: true }); // Capture phase is crucial here
 
     // Custom Key Handler for Tab Autocomplete
     term.attachCustomKeyEventHandler((arg) => {
