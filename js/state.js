@@ -1,26 +1,100 @@
-// STATE MANAGEMENT
+// REACTIVE STATE MANAGEMENT
 
-let cloudSaver = null; // Callback for cloud saving
+let cloudSaver = null;
+let saveTimeout = null;
 
-// Optimistic Prompt Initialization
+// Initial Data Loading
 const cachedEmail = localStorage.getItem('zen_user_email');
 const initialPrompt = cachedEmail ? `${cachedEmail.split('@')[0]}@zen > ` : '> ';
 
-export const state = {
+const initialData = {
     tasks: JSON.parse(localStorage.getItem('tasks')) || [],
-    previousTasks: null,
+    previousTasks: null, // Undo buffer
     archive: JSON.parse(localStorage.getItem('zen_archive')) || [],
     commandHistory: JSON.parse(localStorage.getItem('zen_command_history')) || [],
-    historyIndex: 0, // Will be set correctly below
+    historyIndex: 0,
     totalCompleted: parseInt(localStorage.getItem('zen_total_completed')) || 0,
     currentTheme: localStorage.getItem('zen_theme') || 'green',
     soundEnabled: localStorage.getItem('zen_sound') === 'true',
     prompt: initialPrompt
 };
 
-// Initialize history index based on loaded history
-state.historyIndex = state.commandHistory.length;
+// Ensure history index is correct on load
+initialData.historyIndex = initialData.commandHistory.length;
 
+// --- INTERNAL HELPERS ---
+
+function persist() {
+    // 1. Re-index tasks automatically (Auto-maintenance)
+    // We do this here so business logic doesn't have to worry about IDs
+    initialData.tasks.forEach((t, i) => t.id = i + 1);
+
+    // 2. Save to Local Storage
+    localStorage.setItem('tasks', JSON.stringify(initialData.tasks));
+    localStorage.setItem('zen_archive', JSON.stringify(initialData.archive));
+    localStorage.setItem('zen_total_completed', initialData.totalCompleted);
+    localStorage.setItem('zen_theme', initialData.currentTheme);
+    localStorage.setItem('zen_sound', initialData.soundEnabled);
+    localStorage.setItem('zen_command_history', JSON.stringify(initialData.commandHistory));
+
+    // 3. Cloud Sync (if connected)
+    if (cloudSaver) cloudSaver();
+}
+
+// Debounce: Prevents hammering storage on rapid changes (e.g., bulk add)
+function scheduleSave() {
+    if (saveTimeout) clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => {
+        persist();
+    }, 200); // 200ms delay
+}
+
+// --- PROXY HANDLERS ---
+
+const arrayHandler = {
+    set(target, property, value, receiver) {
+        // Use Reflect to ensure default behavior (like updating length) works correctly
+        const result = Reflect.set(target, property, value, receiver);
+        
+        // Trigger save if operation was successful and modified content
+        if (result && (property === 'length' || !isNaN(property))) {
+            scheduleSave();
+        }
+        return result;
+    }
+};
+
+const stateHandler = {
+    set(target, property, value, receiver) {
+        const result = Reflect.set(target, property, value, receiver);
+        // Only save if the property is NOT ephemeral (like historyIndex)
+        if (result && property !== 'historyIndex') {
+            scheduleSave();
+        }
+        return result;
+    },
+    get(target, property, receiver) {
+        const value = Reflect.get(target, property, receiver);
+        
+        // Deep Proxy for Arrays to detect .push(), .splice(), etc.
+        if ((property === 'tasks' || property === 'archive' || property === 'commandHistory') && Array.isArray(value)) {
+            return new Proxy(value, arrayHandler);
+        }
+        return value;
+    }
+};
+
+// --- EXPORTS ---
+
+// 1. The Reactive State Object
+export const state = new Proxy(initialData, stateHandler);
+
+// 2. Helper for Cloud Auth (Dependency Injection)
+export function setCloudSaver(fn) {
+    cloudSaver = fn;
+}
+
+// 3. Helper for Prompt Updates
 export function updatePrompt(user) {
     if (user) {
         localStorage.setItem('zen_user_email', user.email);
@@ -32,56 +106,53 @@ export function updatePrompt(user) {
     }
 }
 
-export function setCloudSaver(fn) {
-    cloudSaver = fn;
+// 4. Cloud Data Hydration
+export function loadTasksFromCloud(data) {
+    // We update the underlying data directly to avoid triggering double-saves
+    // or circular loops, but in this architecture, setting state.* triggers save.
+    // However, when loading from cloud, we usually want to be in sync.
+    // To prevent immediate write-back, we could suppress the saver, 
+    // but the debounce handles mostly everything.
+    
+    if (data.tasks) state.tasks = data.tasks;
+    if (data.archive) state.archive = data.archive;
+    if (data.totalCompleted !== undefined) state.totalCompleted = data.totalCompleted;
+    if (data.theme) state.currentTheme = data.theme;
+    if (data.commandHistory) {
+        // Check if user was at the "end" (inputting new command) before update
+        const wasAtEnd = state.historyIndex >= state.commandHistory.length;
+        
+        state.commandHistory = data.commandHistory;
+        
+        if (wasAtEnd) {
+            // Keep at end
+            state.historyIndex = state.commandHistory.length;
+        } else {
+            // User was browsing. Keep index, but clamp it if history shrank.
+            if (state.historyIndex > state.commandHistory.length) {
+                state.historyIndex = state.commandHistory.length;
+            }
+        }
+        
+        // Update local cache of history from cloud
+        localStorage.setItem('zen_command_history', JSON.stringify(state.commandHistory));
+    }
 }
 
+// 5. Utility: Save Snapshot (for Undo)
+// This remains manual because "when to snapshot" is a business decision
+export function saveStateSnapshot() {
+    state.previousTasks = JSON.parse(JSON.stringify(state.tasks));
+}
+
+// 6. Utility: Add to History
 export function addToHistory(cmd) {
     state.commandHistory.push(cmd);
     if (state.commandHistory.length > 50) {
         state.commandHistory.shift();
     }
     state.historyIndex = state.commandHistory.length;
-    
-    // Save locally immediately
-    localStorage.setItem('zen_command_history', JSON.stringify(state.commandHistory));
-    
-    // Trigger cloud sync
-    if (cloudSaver) cloudSaver();
+    // Proxies handle saving automatically
 }
 
-export function loadTasksFromCloud(data) {
-    if (data.tasks) state.tasks = data.tasks;
-    if (data.archive) state.archive = data.archive;
-    if (data.totalCompleted) state.totalCompleted = data.totalCompleted;
-    if (data.theme) state.currentTheme = data.theme;
-    if (data.commandHistory && Array.isArray(data.commandHistory)) {
-        state.commandHistory = data.commandHistory;
-        state.historyIndex = state.commandHistory.length;
-        // Update local cache of history from cloud
-        localStorage.setItem('zen_command_history', JSON.stringify(state.commandHistory));
-    }
-    
-    // Ulozit aj do lokalneho storage ako zalohu/cache
-    localStorage.setItem('tasks', JSON.stringify(state.tasks));
-    localStorage.setItem('zen_archive', JSON.stringify(state.archive));
-    localStorage.setItem('zen_total_completed', state.totalCompleted);
-}
-export function saveTasks() {
-    localStorage.setItem('tasks', JSON.stringify(state.tasks));
-    localStorage.setItem('zen_archive', JSON.stringify(state.archive));
-    if (cloudSaver) cloudSaver();
-}
-
-export function saveStateSnapshot() {
-    state.previousTasks = JSON.parse(JSON.stringify(state.tasks));
-}
-
-export function saveTotalCompleted() {
-    localStorage.setItem('zen_total_completed', state.totalCompleted);
-    if (cloudSaver) cloudSaver();
-}
-
-export function reindexTasks() {
-    state.tasks.forEach((t, i) => t.id = i + 1);
-}
+// Note: manual saveTasks() and reindexTasks() are no longer needed/exported.

@@ -12,9 +12,9 @@ export const themeList = ['green', 'amber', 'cyan'];
 
 export function applyTheme(themeName) {
     if (themes[themeName]) {
+        // state.currentTheme assignment triggers auto-save to localStorage
         state.currentTheme = themeName;
         term.options.theme = themes[themeName];
-        localStorage.setItem('zen_theme', themeName);
     }
 }
 

@@ -1,6 +1,6 @@
 // COMMAND HANDLER & BUSINESS LOGIC
 import { term } from './terminal.js';
-import { state, saveTasks, saveStateSnapshot, reindexTasks, saveTotalCompleted } from './state.js';
+import { state, saveStateSnapshot } from './state.js';
 import { playSuccessSound, toggleSound } from './audio.js';
 import { applyTheme, themes, startThemeSelection } from './theme.js';
 import { startFocus } from './focus.js';
@@ -14,6 +14,8 @@ function cmdAdd(args) {
     if (newTasks.length > 0) {
         saveStateSnapshot();
         newTasks.forEach(taskText => {
+            // IDs are auto-assigned by state.js persist logic, 
+            // but for immediate display we give a temp ID which will be corrected on save
             state.tasks.push({
                 id: state.tasks.length + 1, 
                 text: taskText, 
@@ -21,8 +23,7 @@ function cmdAdd(args) {
             });
             term.writeln(`[SYSTEM]: Task "${taskText}" added to the cognitive matrix.`);
         });
-        saveTasks();
-        reindexTasks();
+        // state.tasks mutation automatically triggers save & reindex via Proxy
     } else {
          term.writeln(`[ERROR]: You didn't enter any task text.`);
     }
@@ -69,9 +70,13 @@ function cmdDone(args) {
         saveStateSnapshot();
         task.done = true;
         task.completedAt = Date.now();
-        state.totalCompleted++;
-        saveTotalCompleted();
-        saveTasks();
+        state.totalCompleted++; // Auto-saves
+        // Trigger save for tasks array update (deep proxy handles it, or explicit assignment triggers it)
+        // Since we modified an object *inside* the array, the array proxy might not catch it 
+        // unless we used a deep recursive proxy. 
+        // Force update to ensure persist:
+        state.tasks = state.tasks; 
+        
         playSuccessSound();
         term.writeln('[SYSTEM]: Dopamine released. Task completed.');
     } else {
@@ -82,8 +87,7 @@ function cmdDone(args) {
 function cmdRm(args) {
     if (args === 'all') {
         saveStateSnapshot();
-        state.tasks = [];
-        saveTasks();
+        state.tasks = []; // Auto-saves
         term.writeln('[SYSTEM]: Cognitive matrix cleared.');
     } else if (args === 'done') {
         const completedTasks = state.tasks.filter(t => t.done);
@@ -97,9 +101,7 @@ function cmdRm(args) {
             // Limit archive
             if (state.archive.length > 100) state.archive = state.archive.slice(-100);
             
-            state.tasks = state.tasks.filter(t => !t.done);
-            reindexTasks();
-            saveTasks();
+            state.tasks = state.tasks.filter(t => !t.done); // This triggers save & reindex
             term.writeln(`[SYSTEM]: Archived ${completedTasks.length} completed tasks. Focus restored.`);
         } else {
             term.writeln('[SYSTEM]: No completed tasks to remove.');
@@ -115,9 +117,7 @@ function cmdRm(args) {
                 state.archive.push(task);
                 if (state.archive.length > 100) state.archive = state.archive.slice(-100);
             }
-            state.tasks.splice(index, 1);
-            reindexTasks();
-            saveTasks();
+            state.tasks.splice(index, 1); // Proxy catches splice, triggers save & reindex
             term.writeln(`[SYSTEM]: Task ${id} removed.`);
         } else {
             term.writeln(`[ERROR]: Task with ID ${args} does not exist.`);
@@ -129,7 +129,7 @@ function cmdUndo() {
     if (state.previousTasks) {
         state.tasks = JSON.parse(JSON.stringify(state.previousTasks));
         state.previousTasks = null;
-        saveTasks();
+        // saveTasks(); // Removed, state assignment triggers auto-save
         term.writeln('[SYSTEM]: Time loop closed. Last change reverted.');
     } else {
         term.writeln('[SYSTEM]: Nowhere to return to.');
