@@ -246,9 +246,9 @@ export function handleAutocomplete(input, setInputCallback) {
         
         if (matches.length === 1) {
             const completed = matches[0];
-            const remainder = completed.substring(input.length);
+            // const remainder = completed.substring(input.length); // Not needed for logic
             const newInput = completed + ' ';
-            term.write(remainder + ' ');
+            // term.write(remainder + ' '); // REMOVED: Let InputManager handle rendering
             setInputCallback(newInput);
         } else if (matches.length > 1) {
             term.writeln('\r\n' + matches.join('  '));
@@ -281,7 +281,7 @@ export function handleAutocomplete(input, setInputCallback) {
             const completed = subMatches[0];
             const remainder = completed.substring(argPrefix.length);
             const newInput = input + remainder;
-            term.write(remainder);
+            // term.write(remainder); // REMOVED
             setInputCallback(newInput);
         } else if (subMatches.length > 1) {
             term.writeln('\r\n' + subMatches.join('  '));

@@ -1,27 +1,11 @@
 // MAIN ENTRY POINT
 import { term, fitAddon } from './terminal.js';
-import { state, addToHistory } from './state.js';
-import { handleCommand, handleAutocomplete } from './commands.js';
-import { playKeySound } from './audio.js';
+import { state } from './state.js';
 import { initAuth } from './auth.js';
-import { 
-    themeSelectionActive, 
-    handleThemeInput, 
-    applyTheme, 
-    themes 
-} from './theme.js';
-import { 
-    initFocusModule, 
-    isFocusActive, 
-    handleFocusInput, 
-    stopFocus, 
-    resizeMatrix 
-} from './focus.js';
-import {
-    initBreakModule,
-    isBreakActive,
-    handleBreakInput
-} from './break.js';
+import { applyTheme, themes } from './theme.js';
+import { initFocusModule } from './focus.js';
+import { initBreakModule } from './break.js';
+import { InputManager } from './input-manager.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements Map
@@ -44,6 +28,10 @@ document.addEventListener('DOMContentLoaded', () => {
     fitAddon.fit();
     term.focus(); // Auto-focus on load
 
+    // Initialize Input Manager
+    const inputManager = new InputManager(term, fitAddon);
+    inputManager.init();
+
     // Initial Setup
     if (themes[state.currentTheme]) {
         applyTheme(state.currentTheme);
@@ -62,128 +50,4 @@ document.addEventListener('DOMContentLoaded', () => {
     term.writeln('Type "help" for a list of commands.');
     term.write(`
 ${state.prompt}`);
-
-    // Local state for input handling
-    let input = '';
-
-    // Listeners
-    window.addEventListener('resize', () => {
-        fitAddon.fit();
-        if (isFocusActive()) resizeMatrix();
-    });
-
-    window.addEventListener('keydown', (e) => {
-        // Prevent default Tab behavior globally
-        if (e.key === 'Tab') {
-            e.preventDefault();
-        }
-        
-        // Handle Focus/Break Mode Exit (Global listener because terminal is hidden)
-        if (isFocusActive()) {
-            if (e.key === 'q' || e.key === 'Q' || e.key === 'Escape') {
-                e.preventDefault();
-                e.stopImmediatePropagation(); // Zastav vsetky ostatne listenery
-                handleFocusInput(e.key);
-            }
-        } else if (isBreakActive()) {
-            if (e.key === 'q' || e.key === 'Q' || e.key === 'Escape') {
-                e.preventDefault();
-                e.stopImmediatePropagation();
-                handleBreakInput(e.key);
-            }
-        }
-    }, { capture: true }); // Capture phase is crucial here
-
-    // Custom Key Handler for Tab Autocomplete
-    term.attachCustomKeyEventHandler((arg) => {
-        // 1. Handle Focus/Break Mode Exit (Block everything)
-        if (isFocusActive() || isBreakActive()) {
-            return false;
-        }
-
-        if (arg.key === 'Tab') {
-            if (arg.type === 'keydown') {
-                arg.preventDefault();
-                arg.stopPropagation();
-                handleAutocomplete(input, (newInput) => {
-                    input = newInput;
-                });
-            }
-            return false;
-        }
-        return true;
-    });
-
-    // Terminal Data Handler
-    term.onData(e => {
-        if (isFocusActive() || isBreakActive()) return;
-
-        // Sound Feedback
-        if (e.length === 1 && e.charCodeAt(0) >= 32) {
-            playKeySound();
-        }
-
-        // 1. Theme Selection Mode
-        if (themeSelectionActive) {
-            handleThemeInput(e);
-            return;
-        }
-
-        // 2. Standard Mode
-        switch (e) {
-            case '\r': // Enter
-                playKeySound();
-                if (input.trim().length > 0) {
-                    addToHistory(input);
-                }
-                handleCommand(input);
-                input = '';
-                // Check active modes again before printing prompt
-                if (!isFocusActive() && !isBreakActive() && !themeSelectionActive) term.write(`
-${state.prompt}`);
-                break;
-            case '\u007F': // Backspace
-                playKeySound();
-                if (input.length > 0) {
-                    input = input.slice(0, -1);
-                    term.write('\b \b');
-                }
-                break;
-            case '\u001b[A': // Arrow Up
-                if (state.historyIndex > 0) {
-                    state.historyIndex--;
-                    const histCmd = state.commandHistory[state.historyIndex];
-                    setInput(histCmd);
-                }
-                break;
-            case '\u001b[B': // Arrow Down
-                if (state.historyIndex < state.commandHistory.length - 1) {
-                    state.historyIndex++;
-                    const histCmd = state.commandHistory[state.historyIndex];
-                    setInput(histCmd);
-                } else {
-                    state.historyIndex = state.commandHistory.length;
-                    setInput('');
-                }
-                break;
-            case '\t': // Tab handled by custom handler
-                break;
-            default:
-                if (e >= ' ' && e <= '~') {
-                    input += e;
-                    term.write(e);
-                }
-        }
-    });
-
-    // Helper to visually replace input line
-    function setInput(newInput) {
-        // Clear current line
-        while (input.length > 0) {
-            term.write('\b \b');
-            input = input.slice(0, -1);
-        }
-        input = newInput;
-        term.write(input);
-    }
 });
