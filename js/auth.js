@@ -1,11 +1,12 @@
 import { auth, provider, db } from './firebase-config.js';
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { term } from './terminal.js';
 import { state, loadTasksFromCloud, setCloudSaver, updatePrompt } from './state.js';
 import { applyTheme } from './theme.js';
 
 let currentUser = null;
+let unsubscribeSnapshot = null;
 
 // Hook up state saver
 setCloudSaver(() => {
@@ -17,9 +18,40 @@ export function initAuth() {
         updatePrompt(user);
         if (user) {
             currentUser = user;
+            // Start listening for cloud changes
+            startCloudListener(user);
         } else {
             currentUser = null;
+            if (unsubscribeSnapshot) {
+                unsubscribeSnapshot();
+                unsubscribeSnapshot = null;
+            }
         }
+    });
+}
+
+function startCloudListener(user) {
+    if (unsubscribeSnapshot) unsubscribeSnapshot();
+
+    const docRef = doc(db, "users", user.uid);
+    unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            
+            // Optimization: Only update if cloud data is newer or different
+            // Firestore metadata can help, but for now we just sync
+            loadTasksFromCloud(data);
+            
+            // Optionally apply theme if changed from another device
+            if (data.theme && data.theme !== state.currentTheme) {
+                applyTheme(data.theme);
+            }
+        } else {
+            // New user - first save will create the doc
+            saveUserData(user);
+        }
+    }, (error) => {
+        console.error("Cloud listener error:", error);
     });
 }
 
@@ -35,7 +67,6 @@ export async function loginUser() {
         currentUser = user;
         updatePrompt(user);
         term.writeln(`[SYSTEM]: Authentication successful. Identity: ${user.email}`);
-        await loadUserData(user);
         term.write(`\r\n${state.prompt}`);
     } catch (error) {
         term.writeln(`[ERROR]: Login failed. ${error.message}`);
@@ -44,32 +75,16 @@ export async function loginUser() {
 
 export async function logoutUser() {
     try {
+        if (unsubscribeSnapshot) {
+            unsubscribeSnapshot();
+            unsubscribeSnapshot = null;
+        }
         await signOut(auth);
         currentUser = null;
         updatePrompt(null);
         term.writeln('[SYSTEM]: Disconnected from cloud. Returning to local mode.');
     } catch (error) {
         term.writeln(`[ERROR]: Logout failed. ${error.message}`);
-    }
-}
-
-async function loadUserData(user) {
-    try {
-        term.writeln('[SYSTEM]: Syncing cognitive data...');
-        const docRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            loadTasksFromCloud(data);
-            if (data.theme) applyTheme(data.theme);
-            term.writeln(`[INFO]: Loaded ${data.tasks ? data.tasks.length : 0} tasks from cloud.`);
-        } else {
-            term.writeln('[SYSTEM]: Creating new cloud profile from local data...');
-            await saveUserData(user);
-        }
-    } catch (error) {
-        term.writeln(`[ERROR]: Cloud sync failed. ${error.message}`);
     }
 }
 
