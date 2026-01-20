@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     term.writeln(`   / /_|  __/ | | |    | |  __/ |  | | | | | | | | | | (_| | |`);
     term.writeln(`  /_____\\___|_| |_|    |_|\\___|_|  |_| |_| |_|_|_| |_|\\__,_|_|`);
     term.writeln('');
-    term.writeln(' v1.0');
+    term.writeln(' v2.0');
     term.writeln('');
     term.writeln('Type "help" for a list of commands.');
     term.write(`

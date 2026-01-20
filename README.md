@@ -1,4 +1,4 @@
-# The Zen Terminal v1.0
+# The Zen Terminal v2.0
 
 A minimalist task manager inspired by retro terminal aesthetics and the philosophy of Deep Work. The application provides a "zen" environment for organizing thoughts without distractions.
 
@@ -8,12 +8,12 @@ The Zen Terminal operates as a web-based command-line simulation. All interactio
 
 ### Key Features
 
-*   **Authentic Experience:** Built on `xterm.js` with retro visuals.
+*   **Authentic Experience:** Built on `xterm.js` with retro visuals and CRT effects.
 *   **Cloud Sync:** Securely synchronize your tasks and settings across devices using Google Identity Services and Firebase.
-*   **Focus Mode (Matrix):** A special concentration mode featuring falling characters (Matrix rain effect) and a countdown timer.
+*   **Focus & Break Modes:** Optimized for Deep Work with Matrix concentration mode and a Breathing exercise mode for breaks.
 *   **Visual Themes:** Switch between classic **Green**, **Amber**, and **Cyan** color schemes.
-*   **Command History:** Navigate through previous commands using Up/Down arrows.
-*   **Data Persistence:** Automatic local saving (LocalStorage) with optional Cloud backup.
+*   **Command History:** Navigate through previous commands using Up/Down arrows (synced to cloud).
+*   **Data Persistence:** Automatic local saving (LocalStorage) with realtime Cloud backup.
 *   **Batch Actions:** Support for adding multiple tasks at once.
 *   **Tagging System:** Organize tasks with `@tags` and filter them easily.
 
@@ -23,11 +23,11 @@ The following commands are available to control the application:
 
 ### Task Management
 
-*   **`do [text] [@tag]`**
+*   **`add [text] [@tag]`**
     *   Adds a new task.
     *   Supports tags for organization (e.g., `@work`, `@home`).
     *   Supports adding multiple tasks at once, separated by a semicolon.
-    *   *Example:* `do Buy milk @home; Finish report @work`
+    *   *Example:* `add Buy milk @home; Finish report @work`
 
 *   **`list`**
     *   Displays a list of all tasks.
@@ -38,7 +38,7 @@ The following commands are available to control the application:
     *   Marks a task as completed (releases dopamine).
     *   *Example:* `done 1`
 
-*   **`del [id]`**, **`del all`** or **`del done`**
+*   **`rm [id]`, `rm all` or `rm done`**
     *   Deletes a specific task, the entire list, or **only completed tasks**.
     *   The list is automatically renumbered after deletion.
 
@@ -50,9 +50,16 @@ The following commands are available to control the application:
 *   **`focus [minutes] [optional_task_id]`**
     *   Starts Deep Work mode.
     *   The entire screen switches to the **Matrix effect**.
-    *   If you provide a task ID (e.g., `focus 25 3`), its name will be displayed above the timer.
+    *   Default: 25 minutes.
     *   Exit the mode by pressing **`q`** or **`Esc`**.
-    *   *Example:* `focus 25` (Pomodoro) or `focus 45 1` (Work on task #1)
+    *   *Example:* `focus` or `focus 45 1`
+
+*   **`break [minutes]`**
+    *   Starts a Breathing Break session.
+    *   Visual animation to guide your breathing rhythm.
+    *   Default: 5 minutes.
+    *   Exit the mode by pressing **`q`** or **`Esc`**.
+    *   *Example:* `break` or `break 2`
 
 *   **`theme [name]`**
     *   Changes the color scheme.
@@ -69,7 +76,7 @@ The following commands are available to control the application:
 
 *   **`review`**
     *   Provides a 24-hour retrospective.
-    *   Shows all tasks completed in the last 24 hours, even if they were archived via `del done`.
+    *   Shows all tasks completed in the last 24 hours, even if they were archived via `rm done`.
     *   *Example:* `review`
 
 ### Cloud & Data
@@ -96,4 +103,4 @@ The following commands are available to control the application:
 *   **Tab:** Command autocomplete (supports commands, tags, and arguments).
 *   **Arrow Up / Down:** Navigate command history.
 *   **Arrows (in Theme menu):** Select theme.
-*   **q / Esc:** Exit Focus mode or Theme selection.
+*   **q / Esc:** Exit Focus/Break mode or Theme selection.

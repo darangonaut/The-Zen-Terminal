@@ -9,7 +9,7 @@ import { loginUser, logoutUser, getCurrentUser } from './auth.js';
 
 // --- COMMAND IMPLEMENTATIONS ---
 
-function cmdDo(args) {
+function cmdAdd(args) {
     const newTasks = args.split(';').map(t => t.trim()).filter(t => t.length > 0);
     if (newTasks.length > 0) {
         saveStateSnapshot();
@@ -79,7 +79,7 @@ function cmdDone(args) {
     }
 }
 
-function cmdDel(args) {
+function cmdRm(args) {
     if (args === 'all') {
         saveStateSnapshot();
         state.tasks = [];
@@ -252,10 +252,10 @@ function cmdReview() {
 
 function cmdHelp() {
     term.writeln('\r\n=== TASK MANAGEMENT ===');
-    term.writeln('  do [text]       - add task(s)');
+    term.writeln('  add [text]      - add task(s)');
     term.writeln('  list            - show all tasks');
     term.writeln('  done [id]       - complete task');
-    term.writeln('  del [id/all/done] - delete specific, all, or done');
+    term.writeln('  rm [id/all/done]- delete specific, all, or done');
     term.writeln('  undo            - revert last change');
 
     term.writeln('\r\n=== FOCUS & VISUALS ===');
@@ -279,10 +279,10 @@ function cmdHelp() {
 // --- COMMAND REGISTRY ---
 
 const commands = {
-    'do': cmdDo,
+    'add': cmdAdd,
     'list': cmdList,
     'done': cmdDone,
-    'del': cmdDel,
+    'rm': cmdRm,
     'undo': cmdUndo,
     'focus': cmdFocus,
     'break': cmdBreak,
@@ -343,7 +343,7 @@ export function handleAutocomplete(input, setInputCallback) {
         const argPrefix = parts[1].toLowerCase();
         let subMatches = [];
 
-        if (action === 'del') {
+        if (action === 'rm') {
             subMatches = ['all', 'done'].filter(s => s.startsWith(argPrefix));
         } else if (action === 'sound') {
             subMatches = ['on', 'off'].filter(s => s.startsWith(argPrefix));
