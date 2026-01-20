@@ -35,10 +35,13 @@ function startCloudListener(user) {
 
     const docRef = doc(db, "users", user.uid);
     unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
+        // Metadata change only (e.g., local write acknowledged) - skip
+        if (docSnap.metadata.hasPendingWrites) return;
+
         if (docSnap.exists()) {
             const data = docSnap.data();
-            
-            // Optimization: Only update if cloud data is newer or different
+            console.log("Cloud update received"); // Debugging
+
             // Firestore metadata can help, but for now we just sync
             loadTasksFromCloud(data);
             

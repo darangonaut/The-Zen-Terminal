@@ -2,6 +2,7 @@
 
 let cloudSaver = null;
 let saveTimeout = null;
+let isSyncing = false; // Internal flag to suppress saves during cloud hydration
 
 // Initial Data Loading
 const cachedEmail = localStorage.getItem('zen_user_email');
@@ -25,6 +26,7 @@ initialData.historyIndex = initialData.commandHistory.length;
 // --- INTERNAL HELPERS ---
 
 function persist() {
+    if (isSyncing) return; // Never save back if we are currently loading from cloud
     // 1. Re-index tasks automatically (Auto-maintenance)
     // We do this here so business logic doesn't have to worry about IDs
     initialData.tasks.forEach((t, i) => t.id = i + 1);
@@ -108,34 +110,37 @@ export function updatePrompt(user) {
 
 // 4. Cloud Data Hydration
 export function loadTasksFromCloud(data) {
-    // We update the underlying data directly to avoid triggering double-saves
-    // or circular loops, but in this architecture, setting state.* triggers save.
-    // However, when loading from cloud, we usually want to be in sync.
-    // To prevent immediate write-back, we could suppress the saver, 
-    // but the debounce handles mostly everything.
-    
-    if (data.tasks) state.tasks = data.tasks;
-    if (data.archive) state.archive = data.archive;
-    if (data.totalCompleted !== undefined) state.totalCompleted = data.totalCompleted;
-    if (data.theme) state.currentTheme = data.theme;
-    if (data.commandHistory) {
-        // Check if user was at the "end" (inputting new command) before update
-        const wasAtEnd = state.historyIndex >= state.commandHistory.length;
-        
-        state.commandHistory = data.commandHistory;
-        
-        if (wasAtEnd) {
-            // Keep at end
-            state.historyIndex = state.commandHistory.length;
-        } else {
-            // User was browsing. Keep index, but clamp it if history shrank.
-            if (state.historyIndex > state.commandHistory.length) {
+    isSyncing = true; // Block write-back
+
+    try {
+        if (data.tasks) state.tasks = data.tasks;
+        if (data.archive) state.archive = data.archive;
+        if (data.totalCompleted !== undefined) state.totalCompleted = data.totalCompleted;
+        if (data.theme) state.currentTheme = data.theme;
+        if (data.commandHistory) {
+            // Check if user was at the "end" (inputting new command) before update
+            const wasAtEnd = state.historyIndex >= state.commandHistory.length;
+            
+            state.commandHistory = data.commandHistory;
+            
+            if (wasAtEnd) {
+                // Keep at end
                 state.historyIndex = state.commandHistory.length;
+            } else {
+                // User was browsing. Keep index, but clamp it if history shrank.
+                if (state.historyIndex > state.commandHistory.length) {
+                    state.historyIndex = state.commandHistory.length;
+                }
             }
+            
+            // Update local cache of history from cloud
+            localStorage.setItem('zen_command_history', JSON.stringify(state.commandHistory));
         }
-        
-        // Update local cache of history from cloud
-        localStorage.setItem('zen_command_history', JSON.stringify(state.commandHistory));
+    } finally {
+        // Use a small timeout to ensure all proxy-triggered microtasks are finished
+        setTimeout(() => {
+            isSyncing = false;
+        }, 50);
     }
 }
 
