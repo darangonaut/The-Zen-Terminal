@@ -1,139 +1,57 @@
 // COMMAND HANDLER & BUSINESS LOGIC
 import { term } from './terminal.js';
-import { state, saveStateSnapshot } from './state.js';
+import { state } from './state.js'; // Stale needed for autocomplete
 import { playSuccessSound, toggleSound } from './audio.js';
 import { applyTheme, themes, startThemeSelection } from './theme.js';
 import { startFocus } from './focus.js';
 import { startBreak } from './break.js';
 import { loginUser, logoutUser, getCurrentUser } from './auth.js';
+import { logicAdd, logicList, logicDone, logicRm, logicUndo } from './commands-logic.js';
 
 // --- COMMAND IMPLEMENTATIONS ---
 
-function cmdAdd(args) {
-    const newTasks = args.split(';').map(t => t.trim()).filter(t => t.length > 0);
-    if (newTasks.length > 0) {
-        saveStateSnapshot();
-        newTasks.forEach(taskText => {
-            // IDs are auto-assigned by state.js persist logic, 
-            // but for immediate display we give a temp ID which will be corrected on save
-            state.tasks.push({
-                id: state.tasks.length + 1, 
-                text: taskText, 
-                done: false 
-            });
-            term.writeln(`[SYSTEM]: Task "${taskText}" added to the cognitive matrix.`);
-        });
-        // state.tasks mutation automatically triggers save & reindex via Proxy
-    } else {
-         term.writeln(`[ERROR]: You didn't enter any task text.`);
+function handleLogicResult(result) {
+    if (!result) return;
+
+    if (result.type === 'list_tags') {
+        term.writeln('=== ACTIVE TAGS ===');
+        result.data.forEach(tag => term.writeln(tag));
+    } 
+    else if (result.type === 'list_tasks') {
+        if (result.title) term.writeln(`=== ${result.title} ===`);
+        result.data.forEach(t => term.writeln(`${t.id}. [${t.done ? 'X' : ' '}] ${t.text}`));
     }
+    else {
+        // Simple message
+        const prefix = result.success ? '[SYSTEM]:' : '[ERROR]:';
+        term.writeln(`${prefix} ${result.message}`);
+    }
+}
+
+function cmdAdd(args) {
+    const result = logicAdd(args);
+    handleLogicResult(result);
 }
 
 function cmdList(args) {
-    if (state.tasks.length === 0) {
-        term.writeln('[SYSTEM]: Void. No tasks available.');
-        return;
-    }
-
-    if (args === 'tags') {
-        const tags = new Set();
-        state.tasks.forEach(t => {
-            const found = t.text.match(/@\w+/g);
-            if (found) found.forEach(tag => tags.add(tag));
-        });
-        
-        if (tags.size === 0) {
-            term.writeln('[SYSTEM]: No tags found used in tasks.');
-        } else {
-            term.writeln('=== ACTIVE TAGS ===');
-            tags.forEach(tag => term.writeln(tag));
-        }
-    } 
-    else if (args.startsWith('@')) {
-        const filtered = state.tasks.filter(t => t.text.includes(args));
-        if (filtered.length === 0) {
-            term.writeln(`[SYSTEM]: No tasks found with tag ${args}`);
-        } else {
-            term.writeln(`=== TASKS [${args}] ===`);
-            filtered.forEach(t => term.writeln(`${t.id}. [${t.done ? 'X' : ' '}] ${t.text}`));
-        }
-    }
-    else {
-        state.tasks.forEach(t => term.writeln(`${t.id}. [${t.done ? 'X' : ' '}] ${t.text}`));
-    }
+    const result = logicList(args);
+    handleLogicResult(result);
 }
 
 function cmdDone(args) {
-    const id = parseInt(args);
-    const task = state.tasks.find(t => t.id === id);
-    if (task) {
-        saveStateSnapshot();
-        task.done = true;
-        task.completedAt = Date.now();
-        state.totalCompleted++; // Auto-saves
-        // Trigger save for tasks array update (deep proxy handles it, or explicit assignment triggers it)
-        // Since we modified an object *inside* the array, the array proxy might not catch it 
-        // unless we used a deep recursive proxy. 
-        // Force update to ensure persist:
-        state.tasks = state.tasks; 
-        
-        playSuccessSound();
-        term.writeln('[SYSTEM]: Dopamine released. Task completed.');
-    } else {
-        term.writeln(`[ERROR]: Task with ID ${args} does not exist.`);
-    }
+    const result = logicDone(args);
+    handleLogicResult(result);
+    if (result.success) playSuccessSound();
 }
 
 function cmdRm(args) {
-    if (args === 'all') {
-        saveStateSnapshot();
-        state.tasks = []; // Auto-saves
-        term.writeln('[SYSTEM]: Cognitive matrix cleared.');
-    } else if (args === 'done') {
-        const completedTasks = state.tasks.filter(t => t.done);
-        if (completedTasks.length > 0) {
-            saveStateSnapshot();
-            // Archive tasks
-            completedTasks.forEach(t => {
-                if (!t.completedAt) t.completedAt = Date.now();
-                state.archive.push(t);
-            });
-            // Limit archive
-            if (state.archive.length > 100) state.archive = state.archive.slice(-100);
-            
-            state.tasks = state.tasks.filter(t => !t.done); // This triggers save & reindex
-            term.writeln(`[SYSTEM]: Archived ${completedTasks.length} completed tasks. Focus restored.`);
-        } else {
-            term.writeln('[SYSTEM]: No completed tasks to remove.');
-        }
-    } else {
-        const id = parseInt(args);
-        const index = state.tasks.findIndex(t => t.id === id);
-        if (index !== -1) {
-            saveStateSnapshot();
-            const task = state.tasks[index];
-            if (task.done) {
-                if (!task.completedAt) task.completedAt = Date.now();
-                state.archive.push(task);
-                if (state.archive.length > 100) state.archive = state.archive.slice(-100);
-            }
-            state.tasks.splice(index, 1); // Proxy catches splice, triggers save & reindex
-            term.writeln(`[SYSTEM]: Task ${id} removed.`);
-        } else {
-            term.writeln(`[ERROR]: Task with ID ${args} does not exist.`);
-        }
-    }
+    const result = logicRm(args);
+    handleLogicResult(result);
 }
 
 function cmdUndo() {
-    if (state.previousTasks) {
-        state.tasks = JSON.parse(JSON.stringify(state.previousTasks));
-        state.previousTasks = null;
-        // saveTasks(); // Removed, state assignment triggers auto-save
-        term.writeln('[SYSTEM]: Time loop closed. Last change reverted.');
-    } else {
-        term.writeln('[SYSTEM]: Nowhere to return to.');
-    }
+    const result = logicUndo();
+    handleLogicResult(result);
 }
 
 function cmdFocus(args) {
