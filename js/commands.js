@@ -4,6 +4,7 @@ import { state, saveTasks, saveStateSnapshot, reindexTasks, saveTotalCompleted }
 import { playSuccessSound, toggleSound } from './audio.js';
 import { applyTheme, themes, startThemeSelection } from './theme.js';
 import { startFocus } from './focus.js';
+import { startBreak } from './break.js';
 import { loginUser, logoutUser, getCurrentUser } from './auth.js';
 
 // --- COMMAND IMPLEMENTATIONS ---
@@ -163,6 +164,17 @@ function cmdFocus(args) {
     }
 }
 
+function cmdBreak(args) {
+    let minutes = 5;
+    if (args) {
+        const parsed = parseInt(args);
+        if (!isNaN(parsed) && parsed > 0) {
+            minutes = parsed;
+        }
+    }
+    startBreak(minutes);
+}
+
 function cmdStats() {
     term.writeln('=== STATISTICS ===');
     term.writeln(`Total completed tasks: ${state.totalCompleted}`);
@@ -248,6 +260,7 @@ function cmdHelp() {
 
     term.writeln('\r\n=== FOCUS & VISUALS ===');
     term.writeln('  focus [min]     - start Focus Mode (Matrix)');
+    term.writeln('  break [min]     - start Breathing Break');
     term.writeln('  theme [name]    - change color scheme');
     term.writeln('  sound [on/off]  - toggle sound effects');
 
@@ -272,6 +285,7 @@ const commands = {
     'del': cmdDel,
     'undo': cmdUndo,
     'focus': cmdFocus,
+    'break': cmdBreak,
     'stats': cmdStats,
     'theme': cmdTheme,
     'sound': cmdSound,

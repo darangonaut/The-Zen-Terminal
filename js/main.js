@@ -17,6 +17,11 @@ import {
     stopFocus, 
     resizeMatrix 
 } from './focus.js';
+import {
+    initBreakModule,
+    isBreakActive,
+    handleBreakInput
+} from './break.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements Map
@@ -31,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize Modules
     initFocusModule(domElements);
+    initBreakModule(domElements);
     initAuth(); // Start Firebase Auth listener
 
     // Mount Terminal
@@ -54,7 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
     term.writeln(' v1.0');
     term.writeln('');
     term.writeln('Type "help" for a list of commands.');
-    term.write(`\r\n${state.prompt}`);
+    term.write(`
+${state.prompt}`);
 
     // Local state for input handling
     let input = '';
@@ -71,18 +78,29 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
         }
         
-        // Handle Focus Mode Exit (Global listener because terminal is hidden)
+        // Handle Focus/Break Mode Exit (Global listener because terminal is hidden)
         if (isFocusActive()) {
             if (e.key === 'q' || e.key === 'Q' || e.key === 'Escape') {
                 e.preventDefault();
                 e.stopImmediatePropagation(); // Zastav vsetky ostatne listenery
                 handleFocusInput(e.key);
             }
+        } else if (isBreakActive()) {
+            if (e.key === 'q' || e.key === 'Q' || e.key === 'Escape') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                handleBreakInput(e.key);
+            }
         }
     }, { capture: true }); // Capture phase is crucial here
 
     // Custom Key Handler for Tab Autocomplete
     term.attachCustomKeyEventHandler((arg) => {
+        // 1. Handle Focus/Break Mode Exit (Block everything)
+        if (isFocusActive() || isBreakActive()) {
+            return false;
+        }
+
         if (arg.key === 'Tab') {
             if (arg.type === 'keydown') {
                 arg.preventDefault();
@@ -98,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Terminal Data Handler
     term.onData(e => {
-        if (isFocusActive()) return;
+        if (isFocusActive() || isBreakActive()) return;
 
         // Sound Feedback
         if (e.length === 1 && e.charCodeAt(0) >= 32) {
@@ -121,7 +139,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 handleCommand(input);
                 input = '';
                 // Check active modes again before printing prompt
-                if (!isFocusActive() && !themeSelectionActive) term.write(`\r\n${state.prompt}`);
+                if (!isFocusActive() && !isBreakActive() && !themeSelectionActive) term.write(`
+${state.prompt}`);
                 break;
             case '\u007F': // Backspace
                 playKeySound();
