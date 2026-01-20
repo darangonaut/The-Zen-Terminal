@@ -137,13 +137,21 @@ function cmdUndo() {
 
 function cmdFocus(args) {
     const focusArgs = args.split(' ').filter(a => a.length > 0);
-    const minutes = parseInt(focusArgs[0]);
+    
+    let minutes = 25; // Default value
+    let taskId = null;
+
+    if (focusArgs.length > 0) {
+        minutes = parseInt(focusArgs[0]);
+        if (focusArgs.length > 1) {
+            taskId = parseInt(focusArgs[1]);
+        }
+    }
     
     if (!isNaN(minutes) && minutes > 0) {
         let taskName = "DEEP WORK"; 
-        if (focusArgs.length > 1) {
-            const id = parseInt(focusArgs[1]);
-            const task = state.tasks.find(t => t.id === id);
+        if (taskId !== null) {
+            const task = state.tasks.find(t => t.id === taskId);
             if (task) taskName = task.text;
         } else {
             const firstUnfinished = state.tasks.find(t => !t.done);
@@ -151,7 +159,7 @@ function cmdFocus(args) {
         }
         startFocus(minutes, taskName);
     } else {
-        term.writeln('[ERROR]: Specify minutes (e.g., focus 25).');
+        term.writeln('[ERROR]: Specify valid minutes (e.g., focus 25).');
     }
 }
 
