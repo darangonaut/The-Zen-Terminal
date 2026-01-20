@@ -1,6 +1,6 @@
-# The Zen Terminal v2.0
+# The Zen Terminal v2.1
 
-A minimalist task manager inspired by retro terminal aesthetics and the philosophy of Deep Work. The application provides a "zen" environment for organizing thoughts without distractions.
+A minimalist task manager inspired by retro terminal aesthetics and the philosophy of Deep Work. The application provides a "zen" environment for organizing thoughts without distractions. Now available as an installable desktop application.
 
 ## Functionality
 
@@ -9,6 +9,7 @@ The Zen Terminal operates as a web-based command-line simulation. All interactio
 ### Key Features
 
 *   **Authentic Experience:** Built on `xterm.js` with retro visuals and CRT effects.
+*   **Progressive Web App (PWA):** Installable as a native-like desktop application with offline support.
 *   **Cloud Sync:** Securely synchronize your tasks and settings across devices using Google Identity Services and Firebase.
 *   **Focus & Break Modes:** Optimized for Deep Work with Matrix concentration mode and a Breathing exercise mode for breaks.
 *   **Visual Themes:** Switch between classic **Green**, **Amber**, and **Cyan** color schemes.
@@ -16,6 +17,13 @@ The Zen Terminal operates as a web-based command-line simulation. All interactio
 *   **Data Persistence:** Automatic local saving (LocalStorage) with realtime Cloud backup.
 *   **Batch Actions:** Support for adding multiple tasks at once.
 *   **Tagging System:** Organize tasks with `@tags` and filter them easily.
+
+## Installation (Desktop App)
+
+To install Zen Terminal as a standalone application:
+1.  Open the site in a Chromium-based browser (Chrome, Edge, Brave) or Safari.
+2.  Click the **"Install"** icon in the address bar (or select "Install Zen Terminal" from the browser menu).
+3.  The app will launch in its own window and integrate with your OS dock/taskbar.
 
 ## Commands
 
