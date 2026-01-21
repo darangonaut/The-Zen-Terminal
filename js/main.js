@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js')
             .then(() => {})
-            .catch(() => {});
+            .catch((err) => console.warn('Service Worker registration failed:', err));
     }
 
     // Auto-sync when user leaves the page (tab switch, minimize, close)
@@ -77,7 +77,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const now = Date.now();
             if (now - lastSyncTime > SYNC_DEBOUNCE) {
                 lastSyncTime = now;
-                await manualSync();
+                try {
+                    await manualSync();
+                } catch (err) {
+                    console.error('Auto-sync failed:', err);
+                }
             }
         }
     });

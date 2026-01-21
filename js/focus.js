@@ -16,7 +16,9 @@ let ctx = null;
 
 export function initFocusModule(domElements) {
     elements = domElements;
-    ctx = elements.matrixCanvas.getContext('2d');
+    if (elements.matrixCanvas) {
+        ctx = elements.matrixCanvas.getContext('2d');
+    }
 }
 
 export function isFocusActive() {
@@ -48,9 +50,14 @@ export function startFocus(minutes, taskText) {
 
     updateTimerDisplay();
     focusInterval = setInterval(() => {
-        focusTimeLeft--;
-        updateTimerDisplay();
-        if (focusTimeLeft <= 0) stopFocus(true);
+        try {
+            focusTimeLeft--;
+            updateTimerDisplay();
+            if (focusTimeLeft <= 0) stopFocus(true);
+        } catch (e) {
+            console.error('Focus timer error:', e);
+            stopFocus(false);
+        }
     }, 1000);
 
     startMatrixEffect();
@@ -92,37 +99,47 @@ const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%^&*";
 let animationId = null;
 
 function startMatrixEffect() {
+    if (!ctx) return;
     resizeMatrix();
     lastFrameTime = 0;
-    
+
     function draw(currentTime) {
-        if (!focusActive) return;
-        animationId = requestAnimationFrame(draw);
-
-        if (currentTime - lastFrameTime < frameDelay) return;
-        lastFrameTime = currentTime;
-
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-        ctx.fillRect(0, 0, elements.matrixCanvas.width, elements.matrixCanvas.height);
-
-        ctx.fillStyle = themes[state.currentTheme].foreground;
-        ctx.font = fontSize + 'px monospace';
-
-        for (let i = 0; i < drops.length; i++) {
-            const text = chars.charAt(Math.floor(Math.random() * chars.length));
-            ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-
-            if (drops[i] * fontSize > elements.matrixCanvas.height && Math.random() > 0.975) {
-                drops[i] = 0;
-            }
-            drops[i]++;
+        if (!focusActive) {
+            animationId = null;
+            return;
         }
+
+        if (currentTime - lastFrameTime >= frameDelay) {
+            lastFrameTime = currentTime;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, elements.matrixCanvas.width, elements.matrixCanvas.height);
+
+            ctx.fillStyle = themes[state.currentTheme].foreground;
+            ctx.font = fontSize + 'px monospace';
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = chars.charAt(Math.floor(Math.random() * chars.length));
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                if (drops[i] * fontSize > elements.matrixCanvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+
+        animationId = requestAnimationFrame(draw);
     }
+
     animationId = requestAnimationFrame(draw);
 }
 
 function stopMatrixEffect() {
-    if (animationId) cancelAnimationFrame(animationId);
+    if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+    }
 }
 
 export function resizeMatrix() {

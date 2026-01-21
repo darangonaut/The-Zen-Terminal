@@ -2,60 +2,77 @@
 import { state } from './state.js';
 
 const AudioContext = window.AudioContext || window.webkitAudioContext;
-const audioCtx = new AudioContext();
+let audioCtx = null;
+
+// Lazy initialization of AudioContext
+function getAudioContext() {
+    if (!audioCtx && AudioContext) {
+        try {
+            audioCtx = new AudioContext();
+        } catch (e) {
+            console.warn('AudioContext not available:', e);
+            return null;
+        }
+    }
+    return audioCtx;
+}
 
 export function playKeySound() {
     if (!state.soundEnabled) return;
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
 
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
 
     osc.type = 'triangle';
-    osc.frequency.value = 600 + Math.random() * 200; 
-    
-    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+    osc.frequency.value = 600 + Math.random() * 200;
+
+    gain.gain.setValueAtTime(0.05, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
 
     osc.connect(gain);
-    gain.connect(audioCtx.destination);
+    gain.connect(ctx.destination);
 
     osc.start();
-    osc.stop(audioCtx.currentTime + 0.05);
+    osc.stop(ctx.currentTime + 0.05);
 }
 
 export function playSuccessSound() {
     if (!state.soundEnabled) return;
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
 
-    const now = audioCtx.currentTime;
-    
+    const now = ctx.currentTime;
+
     // Osc 1
-    const osc1 = audioCtx.createOscillator();
-    const gain1 = audioCtx.createGain();
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
     osc1.type = 'sine';
-    osc1.frequency.setValueAtTime(523.25, now); 
+    osc1.frequency.setValueAtTime(523.25, now);
     osc1.frequency.exponentialRampToValueAtTime(1046.50, now + 0.1);
-    
+
     gain1.gain.setValueAtTime(0.1, now);
     gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
 
     osc1.connect(gain1);
-    gain1.connect(audioCtx.destination);
+    gain1.connect(ctx.destination);
     osc1.start();
     osc1.stop(now + 0.5);
 
     // Osc 2
-    const osc2 = audioCtx.createOscillator();
-    const gain2 = audioCtx.createGain();
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
     osc2.type = 'triangle';
-    osc2.frequency.setValueAtTime(659.25, now); 
-    
+    osc2.frequency.setValueAtTime(659.25, now);
+
     gain2.gain.setValueAtTime(0.05, now);
     gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
 
     osc2.connect(gain2);
-    gain2.connect(audioCtx.destination);
+    gain2.connect(ctx.destination);
     osc2.start();
     osc2.stop(now + 0.5);
 }

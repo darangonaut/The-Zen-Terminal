@@ -26,7 +26,9 @@ let ctx = null;
 
 export function initBreakModule(domElements) {
     elements = domElements;
-    ctx = elements.matrixCanvas.getContext('2d');
+    if (elements.matrixCanvas) {
+        ctx = elements.matrixCanvas.getContext('2d');
+    }
 }
 
 export function isBreakActive() {
@@ -60,9 +62,14 @@ export function startBreak(minutes = 5) {
 
     // Timers
     breakInterval = setInterval(() => {
-        breakTimeLeft--;
-        updateTimerDisplay();
-        if (breakTimeLeft <= 0) stopBreak(true);
+        try {
+            breakTimeLeft--;
+            updateTimerDisplay();
+            if (breakTimeLeft <= 0) stopBreak(true);
+        } catch (e) {
+            console.error('Break timer error:', e);
+            stopBreak(false);
+        }
     }, 1000);
 
     startBreathingAnimation();
@@ -77,15 +84,20 @@ function updateTimerDisplay() {
 export function stopBreak(finished = false) {
     breakActive = false;
     clearInterval(breakInterval);
-    cancelAnimationFrame(animationId);
+    if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+    }
 
     // Reset UI
     elements.matrixCanvas.style.display = 'none';
     elements.focusOverlay.style.display = 'none';
     elements.terminalContainer.style.display = 'block';
-    
+
     // Clear canvas
-    ctx.clearRect(0, 0, elements.matrixCanvas.width, elements.matrixCanvas.height);
+    if (ctx && elements.matrixCanvas) {
+        ctx.clearRect(0, 0, elements.matrixCanvas.width, elements.matrixCanvas.height);
+    }
 
     term.focus();
     term.write('\r\n');
@@ -101,15 +113,18 @@ export function stopBreak(finished = false) {
 
 // VISUALS
 function startBreathingAnimation() {
+    if (!ctx) return;
     let startTime = Date.now();
-    
+
     function draw() {
-        if (!breakActive) return;
-        animationId = requestAnimationFrame(draw);
+        if (!breakActive) {
+            animationId = null;
+            return;
+        }
 
         const now = Date.now();
         const elapsed = (now - startTime) / 1000;
-        
+
         // Cycle Logic
         const totalCycle = breathCycle.inhale + breathCycle.hold + breathCycle.exhale + breathCycle.pause;
         const currentPos = elapsed % totalCycle;
@@ -119,50 +134,52 @@ function startBreathingAnimation() {
 
         if (currentPos < breathCycle.inhale) {
             breathState = 'inhale';
-            const progress = currentPos / breathCycle.inhale; // 0 -> 1
-            radius = 50 + (progress * 100); // Expand
+            const progress = currentPos / breathCycle.inhale;
+            radius = 50 + (progress * 100);
             text = "INHALE";
         } else if (currentPos < breathCycle.inhale + breathCycle.hold) {
             breathState = 'hold';
-            radius = 150; // Max size
+            radius = 150;
             text = "HOLD";
         } else if (currentPos < breathCycle.inhale + breathCycle.hold + breathCycle.exhale) {
             breathState = 'exhale';
             const localPos = currentPos - (breathCycle.inhale + breathCycle.hold);
-            const progress = localPos / breathCycle.exhale; // 0 -> 1
-            radius = 150 - (progress * 100); // Shrink
+            const progress = localPos / breathCycle.exhale;
+            radius = 150 - (progress * 100);
             text = "EXHALE";
         } else {
             breathState = 'pause';
-            radius = 50; // Min size
+            radius = 50;
             text = "WAIT";
         }
 
         // Render
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'; // Fade effect
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
         ctx.fillRect(0, 0, elements.matrixCanvas.width, elements.matrixCanvas.height);
 
         // Draw Circle
         const centerX = elements.matrixCanvas.width / 2;
         const centerY = elements.matrixCanvas.height / 2;
-        
+
         ctx.beginPath();
         ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
         ctx.strokeStyle = themes[state.currentTheme].foreground;
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Optional: Particles inside
+        // Particles inside
         ctx.fillStyle = themes[state.currentTheme].foreground;
-        for(let i=0; i<10; i++) {
+        for (let i = 0; i < 10; i++) {
             const angle = Math.random() * Math.PI * 2;
             const r = Math.random() * radius;
-            ctx.fillRect(centerX + Math.cos(angle)*r, centerY + Math.sin(angle)*r, 2, 2);
+            ctx.fillRect(centerX + Math.cos(angle) * r, centerY + Math.sin(angle) * r, 2, 2);
         }
 
         // Update Overlay Text
         elements.focusTaskEl.innerText = text;
+
+        animationId = requestAnimationFrame(draw);
     }
-    
-    draw();
+
+    animationId = requestAnimationFrame(draw);
 }
