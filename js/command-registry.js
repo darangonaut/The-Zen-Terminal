@@ -201,8 +201,8 @@ export const commandRegistry = [
             const past24h = now - (24 * 60 * 60 * 1000);
             
             const recentlyDone = [
-                ...state.tasks.filter(t => t.done && t.completedAt > past24h),
-                ...state.archive.filter(t => t.completedAt > past24h)
+                ...state.tasks.filter(t => t.done && t.completedAt && t.completedAt > past24h),
+                ...state.archive.filter(t => t.completedAt && t.completedAt > past24h)
             ];
 
             if (recentlyDone.length === 0) {

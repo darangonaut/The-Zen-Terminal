@@ -16,6 +16,7 @@ const ASSETS_TO_CACHE = [
     './js/commands-logic.js',
     './js/commands.js',
     './js/audio.js',
+    './js/notifications.js',
     './js/firebase-config.js',
     // External libraries (cache them so they work offline)
     'https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.css',
