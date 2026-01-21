@@ -5,6 +5,7 @@ import { applyTheme, themes, startThemeSelection } from './theme.js';
 import { toggleSound } from './audio.js';
 import { term } from './terminal.js'; // Needed for direct UI commands (sound/clear)
 import { loginUser, logoutUser, getCurrentUser, manualSync } from './auth.js';
+import { toggleNotifications, areNotificationsEnabled } from './notifications.js';
 import { state } from './state.js';
 
 // Helper for UI-only commands that don't return logic objects
@@ -116,15 +117,28 @@ export const commandRegistry = [
             return null; // toggleSound writes to term
         }
     },
+    {
+        name: 'notify',
+        description: 'Toggle browser notifications',
+        usage: 'notify [on/off]',
+        execute: async (args) => {
+            const result = await toggleNotifications(args);
+            if (result.success) {
+                const status = areNotificationsEnabled() ? 'ON' : 'OFF';
+                return { success: true, message: `${result.message} Status: ${status}` };
+            }
+            return result;
+        }
+    },
 
     // --- CLOUD & DATA ---
     {
         name: 'login',
         description: 'Sync with Google Cloud',
         usage: 'login',
-        execute: () => {
+        execute: async () => {
             if (getCurrentUser()) return uiSuccess(`Already logged in as ${getCurrentUser().email}`);
-            loginUser();
+            await loginUser();
             return null;
         }
     },
@@ -132,9 +146,9 @@ export const commandRegistry = [
         name: 'logout',
         description: 'Disconnect from cloud',
         usage: 'logout',
-        execute: () => {
+        execute: async () => {
             if (getCurrentUser()) {
-                logoutUser();
+                await logoutUser();
                 return null;
             }
             return uiSuccess('Not logged in.');

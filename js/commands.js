@@ -101,7 +101,7 @@ export function handleAutocomplete(input, setInputCallback) {
         // Logic for specific commands
         if (action === 'rm') {
             subMatches = ['all', 'done'].filter(s => s.startsWith(argPrefix));
-        } else if (action === 'sound') {
+        } else if (action === 'sound' || action === 'notify') {
             subMatches = ['on', 'off'].filter(s => s.startsWith(argPrefix));
         } else if (action === 'theme') {
             subMatches = Object.keys(themes).filter(s => s.startsWith(argPrefix));

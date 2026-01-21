@@ -3,6 +3,7 @@ import { term } from './terminal.js';
 import { state } from './state.js';
 import { themes } from './theme.js';
 import { playSuccessSound } from './audio.js';
+import { notifyBreakComplete } from './notifications.js';
 
 let breakActive = false;
 let breakInterval = null;
@@ -90,6 +91,7 @@ export function stopBreak(finished = false) {
     term.write('\r\n');
     if (finished) {
         playSuccessSound();
+        notifyBreakComplete();
         term.writeln('[SYSTEM]: Break over. Ready to focus?');
     } else {
         term.writeln('[SYSTEM]: Break interrupted.');

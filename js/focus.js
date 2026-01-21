@@ -3,10 +3,12 @@ import { term } from './terminal.js';
 import { state } from './state.js';
 import { themes } from './theme.js';
 import { playSuccessSound } from './audio.js';
+import { notifyFocusComplete } from './notifications.js';
 
 let focusActive = false;
 let focusInterval = null;
 let focusTimeLeft = 0;
+let currentTaskName = '';
 
 // DOM Elements placeholders
 let elements = {};
@@ -30,6 +32,7 @@ export function handleFocusInput(key) {
 export function startFocus(minutes, taskText) {
     focusActive = true;
     focusTimeLeft = minutes * 60;
+    currentTaskName = taskText;
 
     // UI Switch
     elements.terminalContainer.style.display = 'none';
@@ -72,6 +75,7 @@ export function stopFocus(finished = false) {
     term.write('\r\n');
     if (finished) {
         playSuccessSound();
+        notifyFocusComplete(currentTaskName);
         term.writeln('[SYSTEM]: Cas vyprsal. Dobra praca.');
     } else {
         term.writeln('[SYSTEM]: Focus mode interrupted.');

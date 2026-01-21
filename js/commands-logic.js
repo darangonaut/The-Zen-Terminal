@@ -73,17 +73,20 @@ export function logicList(args) {
 
 export function logicDone(args) {
     const id = parseInt(args, 10);
+    if (isNaN(id)) {
+        return error('Please enter a valid task ID (number).');
+    }
     const task = state.tasks.find(t => t.id === id);
     if (task) {
         saveStateSnapshot();
         task.done = true;
         task.completedAt = Date.now();
-        state.totalCompleted++; 
+        state.totalCompleted++;
         // Force update for deep properties
         state.tasks = state.tasks;
         return success('Dopamine released. Task completed.');
     } else {
-        return error(`Task with ID ${args} does not exist.`);
+        return error(`Task with ID ${id} does not exist.`);
     }
 }
 
@@ -109,6 +112,9 @@ export function logicRm(args) {
         }
     } else {
         const id = parseInt(args, 10);
+        if (isNaN(id)) {
+            return error('Please enter a valid task ID (number), "all", or "done".');
+        }
         const index = state.tasks.findIndex(t => t.id === id);
         if (index !== -1) {
             saveStateSnapshot();
@@ -121,7 +127,7 @@ export function logicRm(args) {
             state.tasks.splice(index, 1);
             return success(`Task ${id} removed.`);
         } else {
-            return error(`Task with ID ${args} does not exist.`);
+            return error(`Task with ID ${id} does not exist.`);
         }
     }
 }

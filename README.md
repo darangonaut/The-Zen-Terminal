@@ -79,6 +79,11 @@ The following commands are available to control the application:
     *   Toggles sound effects (typing sounds, task completion).
     *   *Example:* `sound on`
 
+*   **`notify [on/off]`**
+    *   Toggles browser notifications for focus/break completion.
+    *   Requires browser permission on first use.
+    *   *Example:* `notify on`
+
 *   **`stats`**
     *   Displays the total number of completed tasks (long-term statistics).
 

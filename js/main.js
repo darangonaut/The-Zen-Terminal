@@ -2,6 +2,7 @@
 import { term, fitAddon } from './terminal.js';
 import { state, hasCachedLogin } from './state.js';
 import { initAuth, waitForCloudData, manualSync, getCurrentUser } from './auth.js';
+import { initNotifications } from './notifications.js';
 import { applyTheme, themes } from './theme.js';
 import { initFocusModule } from './focus.js';
 import { initBreakModule } from './break.js';
@@ -21,6 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize Modules
     initFocusModule(domElements);
     initBreakModule(domElements);
+    initNotifications(); // Browser notifications
     initAuth(); // Start Firebase Auth listener
 
     // Mount Terminal
@@ -65,11 +67,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             .catch(() => {});
     }
 
-    // Auto-sync on page unload (backup for manual sync)
-    window.addEventListener('beforeunload', () => {
-        if (getCurrentUser()) {
-            // Use sendBeacon for reliable sync on page close
-            manualSync();
+    // Auto-sync when user leaves the page (tab switch, minimize, close)
+    // Using visibilitychange instead of beforeunload for reliable async sync
+    let lastSyncTime = 0;
+    const SYNC_DEBOUNCE = 5000; // Don't sync more than once per 5 seconds
+
+    document.addEventListener('visibilitychange', async () => {
+        if (document.visibilityState === 'hidden' && getCurrentUser()) {
+            const now = Date.now();
+            if (now - lastSyncTime > SYNC_DEBOUNCE) {
+                lastSyncTime = now;
+                await manualSync();
+            }
         }
     });
 });

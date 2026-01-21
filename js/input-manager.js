@@ -111,7 +111,7 @@ export class InputManager {
         });
 
         // Main Data Handler
-        this.dataListener = this.term.onData(e => {
+        this.dataListener = this.term.onData(async (e) => {
             if (isFocusActive() || isBreakActive()) return;
 
             // Sound Feedback
@@ -126,18 +126,18 @@ export class InputManager {
             }
 
             // 2. Standard Mode
-            this.handleStandardInput(e);
+            await this.handleStandardInput(e);
         });
     }
 
-    handleStandardInput(e) {
+    async handleStandardInput(e) {
         switch (e) {
             case '\r': // Enter
                 playKeySound();
                 if (this.inputBuffer.trim().length > 0) {
                     addToHistory(this.inputBuffer);
                 }
-                handleCommand(this.inputBuffer);
+                await handleCommand(this.inputBuffer);
                 this.inputBuffer = '';
                 // Check active modes again before printing prompt
                 if (!isFocusActive() && !isBreakActive() && !themeSelectionActive) {

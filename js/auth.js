@@ -86,7 +86,7 @@ function startCloudListener(user) {
     let isFirstSnapshot = true; // Skip first snapshot (we already fetched via getDoc)
     const docRef = doc(db, "users", user.uid);
 
-    unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
+    unsubscribeSnapshot = onSnapshot(docRef, async (docSnap) => {
         // Skip first snapshot - we already loaded data via getDoc
         if (isFirstSnapshot) {
             isFirstSnapshot = false;
@@ -106,7 +106,7 @@ function startCloudListener(user) {
             }
         } else {
             // New user - first save will create the doc
-            saveUserData(user);
+            await saveUserData(user);
         }
     }, (error) => {
         console.error("Cloud listener error:", error);
