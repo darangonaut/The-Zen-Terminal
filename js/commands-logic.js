@@ -1,6 +1,10 @@
 // PURE BUSINESS LOGIC FOR COMMANDS
 import { state, saveStateSnapshot } from './state.js';
 
+// Validation constants
+const MAX_TASK_LENGTH = 200;
+const MAX_TASKS_AT_ONCE = 20;
+
 // Helper for responses
 const success = (msg) => ({ success: true, message: msg });
 const error = (msg) => ({ success: false, message: msg });
@@ -8,23 +12,34 @@ const info = (msg) => ({ success: true, message: msg, type: 'info' });
 
 export function logicAdd(args) {
     const newTasks = args.split(';').map(t => t.trim()).filter(t => t.length > 0);
-    if (newTasks.length > 0) {
-        saveStateSnapshot();
-        const added = [];
-        newTasks.forEach(taskText => {
-            // IDs are auto-managed by state persistence, but we generate temp obj
-            const task = {
-                id: state.tasks.length + 1, 
-                text: taskText, 
-                done: false 
-            };
-            state.tasks.push(task);
-            added.push(taskText);
-        });
-        return success(`Task(s) added: "${added.join('", "')}"`);
-    } else {
+
+    if (newTasks.length === 0) {
         return error("You didn't enter any task text.");
     }
+
+    // Validate: max tasks at once
+    if (newTasks.length > MAX_TASKS_AT_ONCE) {
+        return error(`Too many tasks at once. Maximum is ${MAX_TASKS_AT_ONCE}.`);
+    }
+
+    // Validate: task text length
+    const tooLong = newTasks.filter(t => t.length > MAX_TASK_LENGTH);
+    if (tooLong.length > 0) {
+        return error(`Task text too long (max ${MAX_TASK_LENGTH} chars). Shorten: "${tooLong[0].substring(0, 30)}..."`);
+    }
+
+    saveStateSnapshot();
+    const added = [];
+    newTasks.forEach(taskText => {
+        const task = {
+            id: state.tasks.length + 1,
+            text: taskText,
+            done: false
+        };
+        state.tasks.push(task);
+        added.push(taskText);
+    });
+    return success(`Task(s) added: "${added.join('", "')}"`);
 }
 
 export function logicList(args) {
@@ -57,7 +72,7 @@ export function logicList(args) {
 }
 
 export function logicDone(args) {
-    const id = parseInt(args);
+    const id = parseInt(args, 10);
     const task = state.tasks.find(t => t.id === id);
     if (task) {
         saveStateSnapshot();
@@ -93,7 +108,7 @@ export function logicRm(args) {
             return info('No completed tasks to remove.');
         }
     } else {
-        const id = parseInt(args);
+        const id = parseInt(args, 10);
         const index = state.tasks.findIndex(t => t.id === id);
         if (index !== -1) {
             saveStateSnapshot();

@@ -4,7 +4,7 @@ import { startBreak } from './break.js';
 import { applyTheme, themes, startThemeSelection } from './theme.js';
 import { toggleSound } from './audio.js';
 import { term } from './terminal.js'; // Needed for direct UI commands (sound/clear)
-import { loginUser, logoutUser, getCurrentUser } from './auth.js';
+import { loginUser, logoutUser, getCurrentUser, manualSync } from './auth.js';
 import { state } from './state.js';
 
 // Helper for UI-only commands that don't return logic objects
@@ -138,6 +138,16 @@ export const commandRegistry = [
                 return null;
             }
             return uiSuccess('Not logged in.');
+        }
+    },
+    {
+        name: 'sync',
+        description: 'Manually sync data to cloud',
+        usage: 'sync',
+        execute: async () => {
+            term.writeln('[SYSTEM]: Syncing to cloud...');
+            const result = await manualSync();
+            return result;
         }
     },
     {

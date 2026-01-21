@@ -13,6 +13,10 @@ export class InputManager {
         this.term = term;
         this.fitAddon = fitAddon;
         this.inputBuffer = ''; // Local input state
+
+        // Store listener references for cleanup
+        this._resizeHandler = null;
+        this._keydownHandler = null;
     }
 
     init() {
@@ -21,19 +25,23 @@ export class InputManager {
     }
 
     setupGlobalListeners() {
+        // Remove existing listeners if present (prevent duplicates)
+        this.removeGlobalListeners();
+
         // Resize Listener
-        window.addEventListener('resize', () => {
+        this._resizeHandler = () => {
             this.fitAddon.fit();
             if (isFocusActive()) resizeMatrix();
-        });
+        };
+        window.addEventListener('resize', this._resizeHandler);
 
         // Global Keydown (Shortcuts & Escapes)
-        window.addEventListener('keydown', (e) => {
+        this._keydownHandler = (e) => {
             // Prevent default Tab behavior globally
             if (e.key === 'Tab') {
                 e.preventDefault();
             }
-            
+
             // Handle Focus/Break Mode Exit (Global listener because terminal is hidden)
             if (isFocusActive()) {
                 if (e.key === 'q' || e.key === 'Q' || e.key === 'Escape') {
@@ -48,7 +56,32 @@ export class InputManager {
                     handleBreakInput(e.key);
                 }
             }
-        }, { capture: true });
+        };
+        window.addEventListener('keydown', this._keydownHandler, { capture: true });
+    }
+
+    removeGlobalListeners() {
+        if (this._resizeHandler) {
+            window.removeEventListener('resize', this._resizeHandler);
+            this._resizeHandler = null;
+        }
+        if (this._keydownHandler) {
+            window.removeEventListener('keydown', this._keydownHandler, { capture: true });
+            this._keydownHandler = null;
+        }
+    }
+
+    dispose() {
+        // Clean up global listeners
+        this.removeGlobalListeners();
+
+        // Clean up terminal listeners
+        if (this.dataListener) {
+            this.dataListener.dispose();
+            this.dataListener = null;
+        }
+
+        this.inputBuffer = '';
     }
 
     setupTerminalHandlers() {

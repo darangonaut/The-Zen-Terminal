@@ -1,13 +1,13 @@
 // MAIN ENTRY POINT
 import { term, fitAddon } from './terminal.js';
-import { state } from './state.js';
-import { initAuth } from './auth.js';
+import { state, hasCachedLogin } from './state.js';
+import { initAuth, waitForCloudData, manualSync, getCurrentUser } from './auth.js';
 import { applyTheme, themes } from './theme.js';
 import { initFocusModule } from './focus.js';
 import { initBreakModule } from './break.js';
 import { InputManager } from './input-manager.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // DOM Elements Map
     const domElements = {
         terminalContainer: document.getElementById('terminal-container'),
@@ -32,11 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputManager = new InputManager(term, fitAddon);
     inputManager.init();
 
-    // Initial Setup
-    if (themes[state.currentTheme]) {
-        applyTheme(state.currentTheme);
-    }
-
     // ASCII Logo
     term.writeln(`   ______            _______                  _             _ `);
     term.writeln(`  |___  /           |__   __|                (_)           | |`);
@@ -47,14 +42,34 @@ document.addEventListener('DOMContentLoaded', () => {
     term.writeln('');
     term.writeln(' v2.1');
     term.writeln('');
+
+    // If user was logged in, wait for cloud data before showing prompt
+    if (hasCachedLogin()) {
+        term.writeln('[SYSTEM]: Syncing with cloud...');
+        await waitForCloudData();
+        term.writeln('[SYSTEM]: Cloud data loaded.');
+    }
+
+    // Apply theme (may have been updated from cloud)
+    if (themes[state.currentTheme]) {
+        applyTheme(state.currentTheme);
+    }
+
     term.writeln('Type "help" for a list of commands.');
-    term.write(`
-${state.prompt}`);
+    term.write(`\r\n${state.prompt}`);
 
     // Register PWA Service Worker
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js')
-            .then(() => console.log('Service Worker Registered'))
-            .catch(err => console.log('Service Worker Failed:', err));
+            .then(() => {})
+            .catch(() => {});
     }
+
+    // Auto-sync on page unload (backup for manual sync)
+    window.addEventListener('beforeunload', () => {
+        if (getCurrentUser()) {
+            // Use sendBeacon for reliable sync on page close
+            manualSync();
+        }
+    });
 });

@@ -7,9 +7,9 @@ import { commandRegistry } from './command-registry.js';
 
 // --- MAIN HANDLER ---
 
-export function handleCommand(input) {
+export async function handleCommand(input) {
     term.write('\r\n');
-    
+
     const parts = input.trim().split(' ');
     const action = parts[0].toLowerCase();
     const args = parts.slice(1).join(' ');
@@ -22,7 +22,7 @@ export function handleCommand(input) {
     const command = commandRegistry.find(cmd => cmd.name === action);
 
     if (command) {
-        const result = command.execute(args);
+        const result = await command.execute(args);
         handleLogicResult(result);
     } else {
         if (input.trim() !== '') {

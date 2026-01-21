@@ -1,20 +1,32 @@
 // REACTIVE STATE MANAGEMENT
 
-let cloudSaver = null;
 let saveTimeout = null;
 let isSyncing = false; // Internal flag to suppress saves during cloud hydration
+let cloudDataLoaded = false; // Flag to track if we've loaded from cloud
+
+// Safe JSON parse helper
+function safeJsonParse(key, fallback = []) {
+    try {
+        const data = localStorage.getItem(key);
+        if (data === null) return fallback;
+        return JSON.parse(data);
+    } catch (e) {
+        console.warn(`Failed to parse localStorage key "${key}":`, e);
+        return fallback;
+    }
+}
 
 // Initial Data Loading
 const cachedEmail = localStorage.getItem('zen_user_email');
 const initialPrompt = cachedEmail ? `${cachedEmail.split('@')[0]}@zen > ` : '> ';
 
 const initialData = {
-    tasks: JSON.parse(localStorage.getItem('tasks')) || [],
+    tasks: safeJsonParse('tasks', []),
     previousTasks: null, // Undo buffer
-    archive: JSON.parse(localStorage.getItem('zen_archive')) || [],
-    commandHistory: JSON.parse(localStorage.getItem('zen_command_history')) || [],
+    archive: safeJsonParse('zen_archive', []),
+    commandHistory: safeJsonParse('zen_command_history', []),
     historyIndex: 0,
-    totalCompleted: parseInt(localStorage.getItem('zen_total_completed')) || 0,
+    totalCompleted: parseInt(localStorage.getItem('zen_total_completed'), 10) || 0,
     currentTheme: localStorage.getItem('zen_theme') || 'green',
     soundEnabled: localStorage.getItem('zen_sound') === 'true',
     prompt: initialPrompt
@@ -31,16 +43,13 @@ function persist() {
     // We do this here so business logic doesn't have to worry about IDs
     initialData.tasks.forEach((t, i) => t.id = i + 1);
 
-    // 2. Save to Local Storage
+    // 2. Save to Local Storage only (cloud sync is manual via 'sync' command)
     localStorage.setItem('tasks', JSON.stringify(initialData.tasks));
     localStorage.setItem('zen_archive', JSON.stringify(initialData.archive));
     localStorage.setItem('zen_total_completed', initialData.totalCompleted);
     localStorage.setItem('zen_theme', initialData.currentTheme);
     localStorage.setItem('zen_sound', initialData.soundEnabled);
     localStorage.setItem('zen_command_history', JSON.stringify(initialData.commandHistory));
-
-    // 3. Cloud Sync (if connected)
-    if (cloudSaver) cloudSaver();
 }
 
 // Debounce: Prevents hammering storage on rapid changes (e.g., bulk add)
@@ -91,12 +100,7 @@ const stateHandler = {
 // 1. The Reactive State Object
 export const state = new Proxy(initialData, stateHandler);
 
-// 2. Helper for Cloud Auth (Dependency Injection)
-export function setCloudSaver(fn) {
-    cloudSaver = fn;
-}
-
-// 3. Helper for Prompt Updates
+// 2. Helper for Prompt Updates
 export function updatePrompt(user) {
     if (user) {
         localStorage.setItem('zen_user_email', user.email);
@@ -108,21 +112,33 @@ export function updatePrompt(user) {
     }
 }
 
-// 4. Cloud Data Hydration
+// 4. Check if user was previously logged in (cached email exists)
+export function hasCachedLogin() {
+    return localStorage.getItem('zen_user_email') !== null;
+}
+
+// 5. Check if cloud data has been loaded
+export function isCloudDataLoaded() {
+    return cloudDataLoaded;
+}
+
+// 6. Cloud Data Hydration
 export function loadTasksFromCloud(data) {
     isSyncing = true; // Block write-back
+    cloudDataLoaded = true; // Mark that we've received cloud data
 
     try {
-        if (data.tasks) state.tasks = data.tasks;
-        if (data.archive) state.archive = data.archive;
-        if (data.totalCompleted !== undefined) state.totalCompleted = data.totalCompleted;
+        // Always overwrite local with cloud data when logged in
+        state.tasks = data.tasks || [];
+        state.archive = data.archive || [];
+        state.totalCompleted = data.totalCompleted ?? 0;
         if (data.theme) state.currentTheme = data.theme;
         if (data.commandHistory) {
             // Check if user was at the "end" (inputting new command) before update
             const wasAtEnd = state.historyIndex >= state.commandHistory.length;
-            
+
             state.commandHistory = data.commandHistory;
-            
+
             if (wasAtEnd) {
                 // Keep at end
                 state.historyIndex = state.commandHistory.length;
@@ -132,7 +148,7 @@ export function loadTasksFromCloud(data) {
                     state.historyIndex = state.commandHistory.length;
                 }
             }
-            
+
             // Update local cache of history from cloud
             localStorage.setItem('zen_command_history', JSON.stringify(state.commandHistory));
         }
@@ -142,6 +158,11 @@ export function loadTasksFromCloud(data) {
             isSyncing = false;
         }, 50);
     }
+}
+
+// 7. Reset cloud loaded flag (on logout)
+export function resetCloudState() {
+    cloudDataLoaded = false;
 }
 
 // 5. Utility: Save Snapshot (for Undo)
