@@ -14,7 +14,7 @@ The Zen Terminal operates as a web-based command-line simulation. All interactio
 *   **Focus & Break Modes:** Optimized for Deep Work with Matrix concentration mode and a Breathing exercise mode for breaks.
 *   **Visual Themes:** Switch between classic **Green**, **Amber**, and **Cyan** color schemes.
 *   **Command History:** Navigate through previous commands using Up/Down arrows (synced to cloud).
-*   **Data Persistence:** Automatic local saving (LocalStorage) with realtime Cloud backup.
+*   **Data Persistence:** Automatic local saving (LocalStorage) with manual Cloud sync.
 *   **Batch Actions:** Support for adding multiple tasks at once.
 *   **Tagging System:** Organize tasks with `@tags` and filter them easily.
 
@@ -90,10 +90,16 @@ The following commands are available to control the application:
 ### Cloud & Data
 
 *   **`login`**
-    *   Initiates Google Login and synchronizes your data with the cloud.
+    *   Initiates Google Login and connects to the cloud.
 
 *   **`logout`**
     *   Disconnects from the cloud and returns to local mode.
+
+*   **`sync`**
+    *   Manually saves your data to the cloud.
+    *   Use this after making changes you want to persist across devices.
+    *   Data is also automatically synced when closing the browser tab.
+    *   *Example:* `sync`
 
 *   **`whoami`**
     *   Displays information about the currently logged-in user.
