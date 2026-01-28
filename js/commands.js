@@ -42,7 +42,26 @@ function handleLogicResult(result) {
     } 
     else if (result.type === 'list_tasks') {
         if (result.title) term.writeln(`=== ${result.title} ===`);
-        result.data.forEach(t => term.writeln(`${t.id}. [${t.done ? 'X' : ' '}] ${t.text}`));
+        result.data.forEach(t => {
+            const pMark = t.priority > 0 ? '!'.repeat(t.priority) + ' ' : '';
+            term.writeln(`${t.id}. [${t.done ? 'X' : ' '}] ${pMark}${t.text}`);
+        });
+    }
+    else if (result.type === 'zenfetch') {
+        const { logo, info } = result.data;
+        term.writeln('');
+        logo.forEach((line, i) => {
+            const infoLine = info[i] ? `  \x1b[1;32m${info[i].label}:\x1b[0m ${info[i].value}` : '';
+            term.writeln(`${line}${infoLine}`);
+        });
+        // If there's more info than logo lines
+        if (info.length > logo.length) {
+            for (let i = logo.length; i < info.length; i++) {
+                const padding = ' '.repeat(logo[0].length);
+                term.writeln(`${padding}  \x1b[1;32m${info[i].label}:\x1b[0m ${info[i].value}`);
+            }
+        }
+        term.writeln('');
     }
     else {
         // Simple message

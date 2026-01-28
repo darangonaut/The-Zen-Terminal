@@ -7,6 +7,7 @@ import { applyTheme, themes } from './theme.js';
 import { initFocusModule } from './focus.js';
 import { initBreakModule } from './break.js';
 import { InputManager } from './input-manager.js';
+import { handleCommand } from './commands.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     // DOM Elements Map
@@ -34,16 +35,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const inputManager = new InputManager(term, fitAddon);
     inputManager.init();
 
-    // ASCII Logo
-    term.writeln(`   ______            _______                  _             _ `);
-    term.writeln(`  |___  /           |__   __|                (_)           | |`);
-    term.writeln(`     / / ___ _ __      | | ___ _ __ _ __ ___  _ _ __   __ _| |`);
-    term.writeln(`    / / / _ \\ '_ \\     | |/ _ \\ '__| '_ \` _ \\| | '_ \\ / _\` | |`);
-    term.writeln(`   / /_|  __/ | | |    | |  __/ |  | | | | | | | | | | (_| | |`);
-    term.writeln(`  /_____\\___|_| |_|    |_|\\___|_|  |_| |_| |_|_|_| |_|\\__,_|_|`);
-    term.writeln('');
-    term.writeln(' v2.1');
-    term.writeln('');
+    // Show Zenfetch on startup
+    await handleCommand('zenfetch');
 
     // If user was logged in, wait for cloud data before showing prompt
     if (hasCachedLogin()) {

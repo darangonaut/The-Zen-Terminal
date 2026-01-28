@@ -13,6 +13,7 @@ export class InputManager {
         this.term = term;
         this.fitAddon = fitAddon;
         this.inputBuffer = ''; // Local input state
+        this.cursorIndex = 0; // Current cursor position within buffer
 
         // Store listener references for cleanup
         this._resizeHandler = null;
@@ -82,6 +83,27 @@ export class InputManager {
         }
 
         this.inputBuffer = '';
+        this.cursorIndex = 0;
+    }
+
+    renderLine() {
+        // Clear from cursor to start of line, then write prompt and buffer
+        // \r moves to start, \x1b[K clears from cursor to end
+        this.term.write('\r\x1b[K' + state.prompt + this.inputBuffer);
+        
+        // Move cursor back to the correct position
+        const moveLeft = this.inputBuffer.length - this.cursorIndex;
+        if (moveLeft > 0) {
+            for (let i = 0; i < moveLeft; i++) {
+                this.term.write('\u001b[D');
+            }
+        }
+    }
+
+    setInput(newInput) {
+        this.inputBuffer = newInput;
+        this.cursorIndex = this.inputBuffer.length;
+        this.renderLine();
     }
 
     setupTerminalHandlers() {
@@ -139,6 +161,7 @@ export class InputManager {
                 }
                 await handleCommand(this.inputBuffer);
                 this.inputBuffer = '';
+                this.cursorIndex = 0;
                 // Check active modes again before printing prompt
                 if (!isFocusActive() && !isBreakActive() && !themeSelectionActive) {
                     this.term.write(`\r\n${state.prompt}`);
@@ -146,9 +169,12 @@ export class InputManager {
                 break;
             case '\u007F': // Backspace
                 playKeySound();
-                if (this.inputBuffer.length > 0) {
-                    this.inputBuffer = this.inputBuffer.slice(0, -1);
-                    this.term.write('\b \b');
+                if (this.cursorIndex > 0) {
+                    // Remove character at cursorIndex - 1
+                    this.inputBuffer = this.inputBuffer.slice(0, this.cursorIndex - 1) + 
+                                     this.inputBuffer.slice(this.cursorIndex);
+                    this.cursorIndex--;
+                    this.renderLine();
                 }
                 break;
             case '\u001b[A': // Arrow Up
@@ -168,23 +194,29 @@ export class InputManager {
                     this.setInput('');
                 }
                 break;
+            case '\u001b[D': // Arrow Left
+                if (this.cursorIndex > 0) {
+                    this.cursorIndex--;
+                    this.term.write('\u001b[D');
+                }
+                break;
+            case '\u001b[C': // Arrow Right
+                if (this.cursorIndex < this.inputBuffer.length) {
+                    this.cursorIndex++;
+                    this.term.write('\u001b[C');
+                }
+                break;
             case '\t': // Tab handled by custom handler
                 break;
             default:
                 if (e >= ' ' && e <= '~') {
-                    this.inputBuffer += e;
-                    this.term.write(e);
+                    // Insert character at cursorIndex
+                    this.inputBuffer = this.inputBuffer.slice(0, this.cursorIndex) + 
+                                     e + 
+                                     this.inputBuffer.slice(this.cursorIndex);
+                    this.cursorIndex += e.length;
+                    this.renderLine();
                 }
         }
-    }
-
-    setInput(newInput) {
-        // Clear current line
-        while (this.inputBuffer.length > 0) {
-            this.term.write('\b \b');
-            this.inputBuffer = this.inputBuffer.slice(0, -1);
-        }
-        this.inputBuffer = newInput;
-        this.term.write(this.inputBuffer);
     }
 }

@@ -33,6 +33,12 @@ export const commandRegistry = [
         execute: (args) => Logic.logicDone(args)
     },
     {
+        name: 'edit',
+        description: 'Edit an existing task text or priority',
+        usage: 'edit <id> <new text>',
+        execute: (args) => Logic.logicEdit(args)
+    },
+    {
         name: 'rm',
         description: 'Remove task(s) (specific, all, or done)',
         usage: 'rm <id> | all | done',
@@ -227,6 +233,12 @@ export const commandRegistry = [
             term.clear();
             return null;
         }
+    },
+    {
+        name: 'zenfetch',
+        description: 'Show system information and a zen quote',
+        usage: 'zenfetch',
+        execute: () => Logic.logicZenfetch()
     }
     // Note: 'help' is handled dynamically in commands.js using this registry
 ];

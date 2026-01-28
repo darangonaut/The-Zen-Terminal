@@ -31,13 +31,26 @@ export function logicAdd(args) {
     saveStateSnapshot();
     const added = [];
     newTasks.forEach(taskText => {
+        let priority = 0;
+        let cleanText = taskText;
+
+        // Detect priority (e.g., !!! Task or Task !!!)
+        const priorityRegex = /^(!{1,3})\s+|\s+(!{1,3})$/;
+        const match = cleanText.match(priorityRegex);
+        if (match) {
+            const marks = match[1] || match[2];
+            priority = marks.length;
+            cleanText = cleanText.replace(marks, '').trim();
+        }
+
         const task = {
             id: state.tasks.length + 1,
-            text: taskText,
+            text: cleanText,
+            priority: priority,
             done: false
         };
         state.tasks.push(task);
-        added.push(taskText);
+        added.push(cleanText + (priority > 0 ? ` [P${priority}]` : ''));
     });
     return success(`Task(s) added: "${added.join('", "')}"`);
 }
@@ -46,6 +59,17 @@ export function logicList(args) {
     if (state.tasks.length === 0) {
         return info('Void. No tasks available.');
     }
+
+    const sortTasks = (tasks) => {
+        return [...tasks].sort((a, b) => {
+            // Unfinished first
+            if (a.done !== b.done) return a.done ? 1 : -1;
+            // High priority first
+            if (a.priority !== b.priority) return b.priority - a.priority;
+            // Oldest first (by ID)
+            return a.id - b.id;
+        });
+    };
 
     if (args === 'tags') {
         const tags = new Set();
@@ -64,10 +88,10 @@ export function logicList(args) {
         if (filtered.length === 0) {
             return info(`No tasks found with tag ${args}`);
         }
-        return { success: true, type: 'list_tasks', data: filtered, title: `TASKS [${args}]` };
+        return { success: true, type: 'list_tasks', data: sortTasks(filtered), title: `TASKS [${args}]` };
     }
     else {
-        return { success: true, type: 'list_tasks', data: state.tasks };
+        return { success: true, type: 'list_tasks', data: sortTasks(state.tasks) };
     }
 }
 
@@ -88,6 +112,55 @@ export function logicDone(args) {
     } else {
         return error(`Task with ID ${id} does not exist.`);
     }
+}
+
+export function logicEdit(args) {
+    const parts = args.trim().split(' ');
+    if (parts.length < 2) {
+        return error('Usage: edit <id> <new text>');
+    }
+
+    const id = parseInt(parts[0], 10);
+    if (isNaN(id)) {
+        return error('Please enter a valid task ID (number).');
+    }
+
+    let newText = parts.slice(1).join(' ');
+    if (newText.length > MAX_TASK_LENGTH) {
+        return error(`Task text too long (max ${MAX_TASK_LENGTH} chars).`);
+    }
+
+    const task = state.tasks.find(t => t.id === id);
+    if (!task) {
+        return error(`Task with ID ${id} does not exist.`);
+    }
+
+    saveStateSnapshot();
+    
+    // Detect priority in new text
+    let priority = 0;
+    const priorityRegex = /^(!{1,3})\s+|\s+(!{1,3})$/;
+    const match = newText.match(priorityRegex);
+    if (match) {
+        const marks = match[1] || match[2];
+        priority = marks.length;
+        newText = newText.replace(marks, '').trim();
+    } else {
+        // If no marks provided, we could either keep old priority or reset it.
+        // Let's keep the old one if no marks are provided, 
+        // OR reset it if we want full control. 
+        // Standard CLI behavior: usually replaces the whole "field".
+        // Let's reset it to 0 if no marks are present in the NEW text.
+        priority = 0; 
+    }
+
+    task.text = newText;
+    task.priority = priority;
+    
+    // Force update
+    state.tasks = state.tasks;
+
+    return success(`Task ${id} updated: "${newText}"${priority > 0 ? ` [P${priority}]` : ''}`);
 }
 
 export function logicRm(args) {
@@ -140,4 +213,43 @@ export function logicUndo() {
     } else {
         return info('Nowhere to return to.');
     }
+}
+
+export function logicZenfetch() {
+    const quotes = [
+        "Focus on being productive instead of busy.",
+        "The soul is the same in all living creatures, although the body of each is different.",
+        "Simplicity is the ultimate sophistication.",
+        "Do not dwell in the past, do not dream of the future, concentrate the mind on the present moment.",
+        "One today is worth two tomorrows.",
+        "The path to Zen is through the keyboard.",
+        "Order is the shape of freedom."
+    ];
+
+    const logo = [
+        "  _____            ",
+        " |__  /___ _ __    ",
+        "   / // _ \\ '_ \\   ",
+        "  / /|  __/ | | |  ",
+        " /____\\___|_| |_|  "
+    ];
+
+    const quote = quotes[Math.floor(Math.random() * quotes.length)];
+    const completed = state.totalCompleted;
+    const active = state.tasks.filter(t => !t.done).length;
+    const theme = state.currentTheme.charAt(0).toUpperCase() + state.currentTheme.slice(1);
+
+    return {
+        success: true,
+        type: 'zenfetch',
+        data: {
+            logo,
+            info: [
+                { label: "OS", value: "ZenOS v2.2 (Web)" },
+                { label: "THEME", value: theme },
+                { label: "TASKS", value: `${completed} done / ${active} active` },
+                { label: "QUOTE", value: `"${quote}"` }
+            ]
+        }
+    };
 }
