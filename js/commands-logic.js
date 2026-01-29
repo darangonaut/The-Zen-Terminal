@@ -253,3 +253,50 @@ export function logicZenfetch() {
         }
     };
 }
+
+export function logicMemo(args) {
+    if (!args) {
+        // Default to list if no args
+        return logicMemoList(); 
+    }
+    
+    const trimmed = args.trim();
+    if (trimmed === 'list') {
+        return logicMemoList();
+    }
+    if (trimmed === 'clear') {
+        state.memos = [];
+        return success('Mind cleared. All memos deleted.');
+    }
+    
+    // Otherwise add
+    const memo = {
+        id: Date.now(),
+        text: trimmed,
+        timestamp: Date.now()
+    };
+    state.memos.push(memo);
+    return success('Thought recorded.');
+}
+
+function logicMemoList() {
+    if (state.memos.length === 0) {
+       return info('No thoughts recorded yet.');
+    }
+    
+    // Sort by timestamp desc (newest first)
+    const sorted = [...state.memos].sort((a, b) => b.timestamp - a.timestamp);
+    
+    const data = sorted.map(m => {
+        const date = new Date(m.timestamp);
+        const dateStr = date.toLocaleDateString();
+        const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return {
+            id: m.id,
+            text: m.text,
+            meta: `[${dateStr} ${timeStr}]`
+        };
+    });
+    
+    return { success: true, type: 'list_memos', data: data, title: 'MEMO LOG' };
+}

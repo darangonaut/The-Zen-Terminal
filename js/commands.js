@@ -47,6 +47,12 @@ function handleLogicResult(result) {
             term.writeln(`${t.id}. [${t.done ? 'X' : ' '}] ${pMark}${t.text}`);
         });
     }
+    else if (result.type === 'list_memos') {
+        if (result.title) term.writeln(`=== ${result.title} ===`);
+        result.data.forEach(m => {
+            term.writeln(`\x1b[2m${m.meta}\x1b[0m ${m.text}`);
+        });
+    }
     else if (result.type === 'zenfetch') {
         const { logo, info } = result.data;
         term.writeln('');
@@ -122,6 +128,8 @@ export function handleAutocomplete(input, setInputCallback) {
             subMatches = ['all', 'done'].filter(s => s.startsWith(argPrefix));
         } else if (action === 'sound' || action === 'notify') {
             subMatches = ['on', 'off'].filter(s => s.startsWith(argPrefix));
+        } else if (action === 'memo') {
+            subMatches = ['list', 'clear'].filter(s => s.startsWith(argPrefix));
         } else if (action === 'theme') {
             subMatches = Object.keys(themes).filter(s => s.startsWith(argPrefix));
         } else if (action === 'list') {

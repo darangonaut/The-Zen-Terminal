@@ -50,6 +50,12 @@ export const commandRegistry = [
         usage: 'undo',
         execute: () => Logic.logicUndo()
     },
+    {
+        name: 'memo',
+        description: 'Record thoughts/notes',
+        usage: 'memo <text> | list | clear',
+        execute: (args) => Logic.logicMemo(args)
+    },
 
     // --- FOCUS & VISUALS ---
     {
@@ -139,9 +145,9 @@ export const commandRegistry = [
 
     // --- CLOUD & DATA ---
     {
-        name: 'login',
+        name: 'signin',
         description: 'Sync with Google Cloud',
-        usage: 'login',
+        usage: 'signin',
         execute: async () => {
             if (getCurrentUser()) return uiSuccess(`Already logged in as ${getCurrentUser().email}`);
             await loginUser();
@@ -149,9 +155,9 @@ export const commandRegistry = [
         }
     },
     {
-        name: 'logout',
+        name: 'signout',
         description: 'Disconnect from cloud',
-        usage: 'logout',
+        usage: 'signout',
         execute: async () => {
             if (getCurrentUser()) {
                 await logoutUser();

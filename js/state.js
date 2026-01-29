@@ -23,6 +23,7 @@ const initialPrompt = cachedEmail ? `${cachedEmail.split('@')[0]}@zen > ` : '> '
 const initialData = {
     tasks: safeJsonParse('tasks', []),
     previousTasks: null, // Undo buffer
+    memos: safeJsonParse('zen_memos', []),
     archive: safeJsonParse('zen_archive', []),
     commandHistory: safeJsonParse('zen_command_history', []),
     historyIndex: 0,
@@ -45,6 +46,7 @@ function persist() {
 
     // 2. Save to Local Storage only (cloud sync is manual via 'sync' command)
     localStorage.setItem('tasks', JSON.stringify(initialData.tasks));
+    localStorage.setItem('zen_memos', JSON.stringify(initialData.memos));
     localStorage.setItem('zen_archive', JSON.stringify(initialData.archive));
     localStorage.setItem('zen_total_completed', initialData.totalCompleted);
     localStorage.setItem('zen_theme', initialData.currentTheme);
@@ -88,7 +90,7 @@ const stateHandler = {
         const value = Reflect.get(target, property, receiver);
         
         // Deep Proxy for Arrays to detect .push(), .splice(), etc.
-        if ((property === 'tasks' || property === 'archive' || property === 'commandHistory') && Array.isArray(value)) {
+        if ((property === 'tasks' || property === 'memos' || property === 'archive' || property === 'commandHistory') && Array.isArray(value)) {
             return new Proxy(value, arrayHandler);
         }
         return value;
@@ -130,6 +132,7 @@ export function loadTasksFromCloud(data) {
     try {
         // Always overwrite local with cloud data when logged in
         state.tasks = data.tasks || [];
+        state.memos = data.memos || [];
         state.archive = data.archive || [];
         state.totalCompleted = data.totalCompleted ?? 0;
         if (data.theme) state.currentTheme = data.theme;
